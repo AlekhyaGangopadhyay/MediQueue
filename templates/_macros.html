@@ -1,0 +1,2 @@
+{% macro badge(status) %}<span class="badge s-{{ status|lower }}">{{ status_label(status) }}</span>{% endmacro %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}

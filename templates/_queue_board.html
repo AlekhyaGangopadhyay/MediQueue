@@ -1,0 +1,48 @@
+{% from "_macros.html" import badge, csrf %}
+{% if not board %}
+  <div class="card"><p class="empty">No appointments are scheduled for today, so there is no queue yet.
+  <a href="{{ url_for('appointment_book') }}">Book an appointment</a>.</p></div>
+{% endif %}
+<div class="queue-grid">
+{% for b in board %}
+  <article class="card q-card">
+    <div class="card-head">
+      <div><h2>{{ b.doctor.full_name }}</h2><small class="muted">{{ b.doctor.department }} · {{ b.doctor.consult_minutes }} min per patient</small></div>
+      <form method="post" action="{{ url_for('queue_call', doctor_id=b.doctor.doctor_id) }}">{{ csrf() }}
+        <button class="btn primary" {% if b.serving or not b.waiting %}disabled{% endif %}>Call next</button></form>
+    </div>
+
+    <div class="serving {{ 'on' if b.serving }}">
+      {% if b.serving %}
+        <span>Now serving</span><b class="token big">#{{ b.serving.token_no }}</b><p>{{ b.serving.patient_name }}</p>
+        <details><summary>Finish consultation</summary>
+          <form method="post" action="{{ url_for('queue_complete', aid=b.serving.appointment_id) }}" class="stack">{{ csrf() }}
+            <label>Diagnosis<input name="diagnosis" maxlength="300"></label>
+            <label>Prescription<textarea name="prescription" rows="2" maxlength="600"></textarea></label>
+            <label>Notes<textarea name="notes" rows="2" maxlength="600"></textarea></label>
+            <button class="btn primary">Save and complete</button>
+          </form></details>
+      {% else %}<span>Now serving</span><p class="muted">No one in consultation.</p>{% endif %}
+    </div>
+
+    <h3>Waiting ({{ b.waiting|length }})</h3>
+    {% if b.waiting %}
+    <table><thead><tr><th>Token</th><th>Patient</th><th>Position</th><th>Est. wait</th><th></th></tr></thead><tbody>
+    {% for w in b.waiting %}<tr>
+      <td><span class="token">#{{ w.token_no }}</span></td><td>{{ w.patient_name }}</td>
+      <td>{{ w.people_ahead + 1 }}{% if w.people_ahead == 0 %} (next){% endif %}</td>
+      <td>~{{ w.est_wait_min }} min</td>
+      <td class="right"><form method="post" action="{{ url_for('queue_skip', aid=w.appointment_id) }}">{{ csrf() }}
+        <button class="link danger" onclick="return confirm('Skip this patient and mark as no-show?')">Skip</button></form></td>
+    </tr>{% endfor %}</tbody></table>
+    {% else %}<p class="empty small">Nobody is waiting.</p>{% endif %}
+
+    {% if b.expected %}
+    <h3>Booked, not yet arrived ({{ b.expected|length }})</h3>
+    <ul class="list compact">{% for e in b.expected %}<li><b>{{ e.slot_time }}</b><span>{{ e.patient_name }}</span>
+      <form method="post" action="{{ url_for('appointment_checkin', aid=e.appointment_id) }}">{{ csrf() }}<input type="hidden" name="next" value="/queue">
+        <button class="btn small">Check in</button></form></li>{% endfor %}</ul>
+    {% endif %}
+  </article>
+{% endfor %}
+</div>

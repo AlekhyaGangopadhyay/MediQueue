@@ -1,0 +1,181 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf %}
+{% block title %}My Patient Portal{% endblock %}
+{% block heading %}My Patient Portal{% endblock %}
+{% block content %}
+<!-- Patient Information Banner -->
+<section class="card patient-hero">
+  <div class="patient-hero-info">
+    <h2>Welcome, {{ data.patient.full_name }}</h2>
+    <div class="patient-meta">
+      <span>📞 {{ data.patient.phone }}</span>
+      {% if data.patient.email %}<span>✉️ {{ data.patient.email }}</span>{% endif %}
+      <span>🎂 DOB: {{ data.patient.date_of_birth }} ({{ data.patient.gender }})</span>
+      {% if data.patient.address %}<span>📍 {{ data.patient.address }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="patient-hero-action">
+    <a href="{{ url_for('appointment_book') }}" class="btn primary">+ Book New Appointment</a>
+  </div>
+</section>
+
+<!-- Active Live Queue Status for Today -->
+<section class="card">
+  <div class="card-head">
+    <h2>Today's Appointments & Live Queue Status</h2>
+    <span class="live"><i></i>auto-updates</span>
+  </div>
+  {% if data.today_appts %}
+    <div class="queue-grid">
+      {% for a in data.today_appts %}
+        <article class="card q-card highlight-card">
+          <div class="card-head">
+            <div>
+              <h3>{{ a.doctor_name }}</h3>
+              <small class="muted">{{ a.department }} · Slot: <b>{{ a.slot_time }}</b></small>
+            </div>
+            <div>{{ badge(a.status) }}</div>
+          </div>
+
+          {% if a.status == 'CHECKED_IN' or a.status == 'IN_CONSULTATION' %}
+            <div class="serving {{ 'on' if a.status == 'IN_CONSULTATION' }}">
+              <span>Your Queue Token</span>
+              <b class="token big">#{{ a.token_no }}</b>
+              {% if a.status == 'IN_CONSULTATION' %}
+                <p class="status-call"><b>🔔 You are now being consulted!</b> Please enter the doctor's room.</p>
+              {% else %}
+                <p>
+                  <b>{{ a.people_ahead }}</b> patient{{ 's' if a.people_ahead != 1 }} ahead of you
+                  · Estimated wait: <b>~{{ a.est_wait_min }} mins</b>
+                </p>
+              {% endif %}
+            </div>
+          {% elif a.status == 'BOOKED' %}
+            <div class="checkin-box">
+              <p>You have a booked slot at <b>{{ a.slot_time }}</b> today.</p>
+              <form method="post" action="{{ url_for('appointment_checkin', aid=a.appointment_id) }}">
+                {{ csrf() }}
+                <button class="btn primary">Check In Now to Get Queue Token</button>
+              </form>
+            </div>
+          {% elif a.status == 'COMPLETED' %}
+            <div class="completed-box">
+              <p class="ok-text">✓ Consultation completed for today.</p>
+            </div>
+          {% elif a.status == 'CANCELLED' or a.status == 'NO_SHOW' %}
+            <div class="cancelled-box">
+              <p class="danger">Appointment was {{ status_label(a.status)|lower }}.</p>
+            </div>
+          {% endif %}
+
+          {% if a.status == 'BOOKED' %}
+            <div class="card-actions">
+              <a href="{{ url_for('appointment_reschedule', aid=a.appointment_id) }}" class="btn small">Reschedule</a>
+              <form method="post" action="{{ url_for('appointment_cancel', aid=a.appointment_id) }}" style="display:inline">
+                {{ csrf() }}
+                <button class="link danger small" onclick="return confirm('Cancel this appointment?')">Cancel</button>
+              </form>
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">You have no appointments scheduled for today.
+      <a href="{{ url_for('appointment_book') }}">Book an appointment</a> or check <a href="{{ url_for('doctors') }}">doctor working hours</a>.
+    </p>
+  {% endif %}
+</section>
+
+<!-- Upcoming Appointments (Future) -->
+<section class="card">
+  <div class="card-head">
+    <h2>Upcoming Appointments</h2>
+    <a class="btn small" href="{{ url_for('appointment_book') }}">+ New Booking</a>
+  </div>
+  {% if data.upcoming_appts %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Doctor</th>
+          <th>Department</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th class="right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in data.upcoming_appts %}
+          <tr>
+            <td><b>{{ a.appt_date }}</b></td>
+            <td>{{ a.slot_time }}</td>
+            <td>{{ a.doctor_name }}</td>
+            <td>{{ a.department }}</td>
+            <td>{{ a.reason or '–' }}</td>
+            <td>{{ badge(a.status) }}</td>
+            <td class="right actions">
+              {% if a.status == 'BOOKED' %}
+                <a href="{{ url_for('appointment_reschedule', aid=a.appointment_id) }}">Reschedule</a>
+                <form method="post" action="{{ url_for('appointment_cancel', aid=a.appointment_id) }}" style="display:inline">
+                  {{ csrf() }}
+                  <button class="link danger" onclick="return confirm('Cancel this appointment?')">Cancel</button>
+                </form>
+              {% else %}
+                <span class="muted">–</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No upcoming appointments. <a href="{{ url_for('appointment_book') }}">Book a slot</a> with any of our specialists.</p>
+  {% endif %}
+</section>
+
+<!-- Past Consultations & Prescriptions -->
+<section class="card">
+  <div class="card-head">
+    <h2>My Consultation & Prescription History</h2>
+  </div>
+  {% if data.history %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Doctor</th>
+          <th>Department</th>
+          <th>Status</th>
+          <th>Diagnosis</th>
+          <th>Prescription & Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in data.history %}
+          <tr>
+            <td><b>{{ h.appt_date }}</b><small class="muted block">{{ h.slot_time }}</small></td>
+            <td>{{ h.doctor_name }}</td>
+            <td>{{ h.department }}</td>
+            <td>{{ badge(h.status) }}</td>
+            <td><b>{{ h.diagnosis or '–' }}</b></td>
+            <td>
+              {% if h.prescription %}
+                <div class="rx-block"><b>Rx:</b> {{ h.prescription }}</div>
+              {% endif %}
+              {% if h.notes %}
+                <small class="muted block">Note: {{ h.notes }}</small>
+              {% endif %}
+              {% if not h.prescription and not h.notes %}
+                <span class="muted">–</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No medical history records yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MediQueue{% endblock %} · MediQueue Hospital System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% if current_user() %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo"></span>
+      <div>
+        <span>MediQueue</span>
+        <small class="role-badge {{ 'admin-pill' if is_admin() else 'patient-pill' }}">
+          {{ 'Hospital Staff' if is_admin() else 'Patient Portal' }}
+        </small>
+      </div>
+    </div>
+    <nav>
+      {% if is_admin() %}
+        <p class="nav-h">Overview</p>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'on' if page=='dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('queue') }}" class="{{ 'on' if page=='queue' }}">Live queue</a>
+        <a href="{{ url_for('appointments') }}" class="{{ 'on' if page=='appointments' }}">Appointments</a>
+        <p class="nav-h">Management</p>
+        <a href="{{ url_for('patients') }}" class="{{ 'on' if page=='patients' }}">Patients</a>
+        <a href="{{ url_for('doctors') }}" class="{{ 'on' if page=='doctors' }}">Doctors</a>
+        <a href="{{ url_for('history') }}" class="{{ 'on' if page=='history' }}">History log</a>
+      {% else %}
+        <p class="nav-h">Patient Menu</p>
+        <a href="{{ url_for('patient_portal') }}" class="{{ 'on' if page=='portal' }}">My Portal & History</a>
+        <a href="{{ url_for('appointment_book') }}" class="{{ 'on' if page=='book' }}">Book Appointment</a>
+        <a href="{{ url_for('doctors') }}" class="{{ 'on' if page=='doctors' }}">Doctor Schedules</a>
+      {% endif %}
+      <p class="nav-h">Account</p>
+      <form method="post" action="{{ url_for('logout') }}" class="logout-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="nav-link-btn" type="submit">Sign out</button>
+      </form>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <h1>{% block heading %}{% endblock %}</h1>
+      <div class="top-actions">
+        {% if is_admin() %}
+          <form action="{{ url_for('patients') }}" method="get" class="search">
+            <input name="q" placeholder="Search patient name or phone" aria-label="Search patients">
+          </form>
+          <a class="btn primary" href="{{ url_for('appointment_book') }}">+ Book appointment</a>
+        {% elif is_patient() %}
+          <span class="user-greeting">Signed in as <b>{{ current_user().name }}</b></span>
+          <a class="btn primary" href="{{ url_for('appointment_book') }}">+ Book appointment</a>
+        {% endif %}
+      </div>
+    </header>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="flash {{ cat }}" role="status">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+<div class="auth-wrapper">
+  <div class="auth-shell">
+    <div class="auth-header">
+      <div class="brand center"><span class="logo"></span><h1>MediQueue</h1></div>
+      <p class="muted center">Hospital Appointment & Queue Management System</p>
+    </div>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="flash {{ cat }}" role="status">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    {% block auth_content %}{% endblock %}
+  </div>
+</div>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

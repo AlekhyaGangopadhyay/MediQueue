@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Register doctor{% endblock %}
+{% block heading %}Register doctor{% endblock %}
+{% block content %}
+<form method="post" class="card form">{{ csrf() }}
+  <label>Full name<input name="full_name" value="{{ f.get('full_name','') }}" required></label>
+  <div class="row">
+    <label>Department<select name="dept_id"><option value="">Select</option>
+      {% for d in depts %}<option value="{{ d.dept_id }}" {{ 'selected' if f.get('dept_id')==d.dept_id|string }}>{{ d.name }}</option>{% endfor %}</select></label>
+    <label>…or new department<input name="new_department" value="{{ f.get('new_department','') }}"></label>
+  </div>
+  <label>Specialization<input name="specialization" value="{{ f.get('specialization','') }}" required></label>
+  <div class="row">
+    <label>Phone<input name="phone" value="{{ f.get('phone','') }}" required inputmode="tel"></label>
+    <label>Email<input type="email" name="email" value="{{ f.get('email','') }}" required></label>
+  </div>
+  <div class="row three">
+    <label>Minutes per patient<input type="number" name="consult_minutes" min="5" max="120" value="{{ f.get('consult_minutes','15') }}"></label>
+    <label>Starts<input type="time" name="start_time" value="{{ f.get('start_time','09:00') }}" required></label>
+    <label>Ends<input type="time" name="end_time" value="{{ f.get('end_time','13:00') }}" required></label>
+  </div>
+  <fieldset><legend>Working days</legend>
+    {% for d in WEEKDAYS %}<label class="chk"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}"
+      {{ 'checked' if (loop.index0|string in chosen) or (not chosen and loop.index0 < 5) }}> {{ d }}</label>{% endfor %}
+  </fieldset>
+  <button class="btn primary">Register doctor</button>
+</form>
+{% endblock %}

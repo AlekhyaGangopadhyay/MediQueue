@@ -1,0 +1,90 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Sign in{% endblock %}
+{% block auth_content %}
+<div class="card auth-card">
+  <div class="tab-pills" id="login-tabs">
+    <button type="button" class="tab-btn active" data-tab="patient">Patient Sign In</button>
+    <button type="button" class="tab-btn" data-tab="admin">Staff / Admin</button>
+  </div>
+
+  <!-- Patient Login Form -->
+  <form method="post" action="{{ url_for('login') }}" class="form auth-form" id="patient-login-form">
+    {{ csrf() }}
+    <input type="hidden" name="role" value="patient">
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <label>Phone Number or Email
+      <input type="text" name="identifier" id="patient-ident" placeholder="e.g. 9831000000 or patient1@mediqueue.test" required autofocus>
+    </label>
+
+    <label>Password
+      <input type="password" name="password" id="patient-pwd" placeholder="Enter your password" required>
+    </label>
+
+    <button class="btn primary full-width">Sign In as Patient</button>
+
+    <div class="quick-creds">
+      <span class="muted small-text">Demo quick fill:</span>
+      <button type="button" class="chip" onclick="fillPatient('9831000000', 'patient123')">Patient Aditi (9831000000)</button>
+    </div>
+
+    <hr class="divider">
+    <p class="center muted small-text">
+      New patient? <a href="{{ url_for('register') }}">Create an account</a> to book appointments and track your queue.
+    </p>
+  </form>
+
+  <!-- Admin Login Form -->
+  <form method="post" action="{{ url_for('login') }}" class="form auth-form hidden" id="admin-login-form">
+    {{ csrf() }}
+    <input type="hidden" name="role" value="admin">
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <label>Admin Username
+      <input type="text" name="username" id="admin-user" placeholder="e.g. admin" required>
+    </label>
+
+    <label>Password
+      <input type="password" name="password" id="admin-pwd" placeholder="Enter admin password" required>
+    </label>
+
+    <button class="btn primary full-width">Sign In to Dashboard</button>
+
+    <div class="quick-creds">
+      <span class="muted small-text">Demo quick fill:</span>
+      <button type="button" class="chip" onclick="fillAdmin('admin', 'admin123')">Admin (admin / admin123)</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('#login-tabs .tab-btn');
+  const patientForm = document.getElementById('patient-login-form');
+  const adminForm = document.getElementById('admin-login-form');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.tab;
+      if (target === 'patient') {
+        patientForm.classList.remove('hidden');
+        adminForm.classList.add('hidden');
+      } else {
+        patientForm.classList.add('hidden');
+        adminForm.classList.remove('hidden');
+      }
+    });
+  });
+
+  function fillPatient(id, pwd) {
+    document.getElementById('patient-ident').value = id;
+    document.getElementById('patient-pwd').value = pwd;
+  }
+
+  function fillAdmin(u, pwd) {
+    document.getElementById('admin-user').value = u;
+    document.getElementById('admin-pwd').value = pwd;
+  }
+</script>
+{% endblock %}

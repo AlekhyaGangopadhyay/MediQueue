@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Register patient{% endblock %}
+{% block heading %}Register patient{% endblock %}
+{% block content %}
+<form method="post" class="card form">{{ csrf() }}
+  <label>Full name<input name="full_name" value="{{ f.get('full_name','') }}" required minlength="2"></label>
+  <div class="row">
+    <label>Date of birth<input type="date" name="date_of_birth" value="{{ f.get('date_of_birth','') }}" max="{{ today() }}" required></label>
+    <label>Gender<select name="gender" required>
+      <option value="">Select</option>
+      {% for v,l in [('M','Male'),('F','Female'),('O','Other')] %}<option value="{{ v }}" {{ 'selected' if f.get('gender')==v }}>{{ l }}</option>{% endfor %}
+    </select></label>
+  </div>
+  <div class="row">
+    <label>Phone<input name="phone" value="{{ f.get('phone','') }}" required inputmode="tel" placeholder="9876543210"></label>
+    <label>Email (optional)<input type="email" name="email" value="{{ f.get('email','') }}"></label>
+  </div>
+  <label>Address (optional)<textarea name="address" rows="2">{{ f.get('address','') }}</textarea></label>
+  <button class="btn primary">Register patient</button>
+</form>
+{% endblock %}

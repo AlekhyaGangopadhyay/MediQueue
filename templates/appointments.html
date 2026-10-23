@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf %}
+{% block title %}Appointments{% endblock %}
+{% block heading %}Appointments{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <form method="get" class="inline filters">
+      <input type="date" name="date" value="{{ f.get('date','') }}" aria-label="Date">
+      <select name="doctor_id" aria-label="Doctor"><option value="">All doctors</option>
+        {% for d in doctors %}<option value="{{ d.doctor_id }}" {{ 'selected' if f.get('doctor_id')==d.doctor_id|string }}>{{ d.full_name }}</option>{% endfor %}</select>
+      <select name="status" aria-label="Status"><option value="">Any status</option>
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if f.get('status')==s }}>{{ status_label(s) }}</option>{% endfor %}</select>
+      <input name="q" value="{{ f.get('q','') }}" placeholder="Patient name or phone">
+      <button class="btn">Filter</button>
+      <a href="{{ url_for('appointments') }}">Clear</a>
+    </form>
+    <a class="btn primary" href="{{ url_for('appointment_book') }}">+ Book appointment</a>
+  </div>
+  {% if rows %}
+  <table><thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Doctor</th><th>Status</th><th>Queue</th><th></th></tr></thead><tbody>
+  {% for a in rows %}<tr>
+    <td>{{ a.appt_date }}</td><td>{{ a.slot_time }}</td>
+    <td><a href="{{ url_for('patient_detail', pid=a.patient_id) }}">{{ a.patient_name }}</a><small class="muted block">{{ a.reason or '' }}</small></td>
+    <td>{{ a.doctor_name }}</td><td>{{ badge(a.status) }}</td>
+    <td>{% if a.token_no and a.token_status == 'WAITING' %}<span class="token">#{{ a.token_no }}</span> {{ a.people_ahead }} ahead · ~{{ a.est_wait_min }} min
+        {% elif a.token_no %}<span class="token">#{{ a.token_no }}</span>{% else %}–{% endif %}</td>
+    <td class="right actions">
+      {% if a.status == 'BOOKED' %}
+        {% if a.appt_date == today() %}<form method="post" action="{{ url_for('appointment_checkin', aid=a.appointment_id) }}">{{ csrf() }}<input type="hidden" name="next" value="{{ request.full_path }}"><button class="link">Check in</button></form>{% endif %}
+        <a href="{{ url_for('appointment_reschedule', aid=a.appointment_id) }}">Reschedule</a>
+      {% endif %}
+      {% if a.status in ('BOOKED','CHECKED_IN') %}
+        <form method="post" action="{{ url_for('appointment_cancel', aid=a.appointment_id) }}">{{ csrf() }}<input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="link danger" onclick="return confirm('Cancel this appointment?')">Cancel</button></form>
+      {% endif %}
+      <a href="{{ url_for('history', appointment_id=a.appointment_id) }}">Log</a>
+    </td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="empty">No appointments match. <a href="{{ url_for('appointment_book') }}">Book one</a>.</p>{% endif %}
+</div>
+{% endblock %}

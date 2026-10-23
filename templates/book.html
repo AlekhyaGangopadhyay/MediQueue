@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Book appointment{% endblock %}
+{% block heading %}Book appointment{% endblock %}
+{% block content %}
+<form method="post" class="card form" id="book-form">{{ csrf() }}
+  <div class="row">
+    {% if is_patient() %}
+      <div class="patient-fixed-info">
+        <label>Booking For</label>
+        <div class="fixed-val">
+          <b>{{ current_user().name }}</b> · {{ current_user().phone }}
+          <input type="hidden" name="patient_id" value="{{ current_user().patient_id }}">
+        </div>
+      </div>
+    {% else %}
+      <label>Patient<select name="patient_id" required><option value="">Select patient</option>
+        {% for p in patients %}<option value="{{ p.patient_id }}" {{ 'selected' if f.get('patient_id')==p.patient_id|string }}>{{ p.full_name }} · {{ p.phone }}</option>{% endfor %}</select>
+        <small class="muted">Not registered yet? <a href="{{ url_for('patient_new') }}">Register patient</a></small></label>
+    {% endif %}
+
+    <label>Doctor<select name="doctor_id" required><option value="">Select doctor</option>
+      {% for d in doctors %}<option value="{{ d.doctor_id }}" {{ 'selected' if f.get('doctor_id')==d.doctor_id|string }}>{{ d.full_name }} · {{ d.department }} ({{ d.consult_minutes }} min)</option>{% endfor %}</select></label>
+  </div>
+  <label>Date<input type="date" name="appt_date" value="{{ f.get('appt_date', today()) }}" min="{{ today() }}" max="{{ max_date() }}" required></label>
+  <fieldset><legend>Time slot</legend>
+    <div class="slots" data-slot-picker data-selected="{{ f.get('slot_time','') }}"><p class="muted">Choose a doctor and date to see free slots.</p></div>
+  </fieldset>
+  <label>Reason for visit (optional)<input name="reason" maxlength="200" value="{{ f.get('reason','') }}" placeholder="e.g. Fever, routine checkup"></label>
+  <button class="btn primary">Confirm & Book Appointment</button>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}"></script>{% endblock %}

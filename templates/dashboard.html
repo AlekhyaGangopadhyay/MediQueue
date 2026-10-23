@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Hospital overview{% endblock %}
+{% block content %}
+<section class="stats">
+  <div class="card stat hero"><span>Appointments today</span><b>{{ s.today_total }}</b><small>{{ s.completed }} completed · {{ s.cancelled }} cancelled</small></div>
+  <div class="card stat"><span>Waiting now</span><b>{{ s.waiting }}</b><small>{{ s.in_consult }} in consultation</small></div>
+  <div class="card stat"><span>Active doctors</span><b>{{ s.doctors }}</b><small><a href="{{ url_for('doctors') }}">View schedules</a></small></div>
+  <div class="card stat"><span>Registered patients</span><b>{{ s.patients }}</b><small><a href="{{ url_for('patient_new') }}">Register patient</a></small></div>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <h2>Appointments, last 7 days</h2>
+    <div class="bars">
+      {% for w in s.week %}
+      <div class="bar-col" title="{{ w.date }}: {{ w.total }} booked, {{ w.done }} completed">
+        <div class="bar-track"><div class="bar stripe" style="height: {{ w.pct }}%"></div></div>
+        <em>{{ w.total }}</em><span>{{ w.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <h2>Today by status</h2>
+    {% if s.status_mix %}
+    <ul class="mix">{% for r in s.status_mix %}<li>{{ badge(r.status) }}<b>{{ r.n }}</b></li>{% endfor %}</ul>
+    {% else %}<p class="empty">No appointments today. <a href="{{ url_for('appointment_book') }}">Book one</a>.</p>{% endif %}
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Queue by doctor</h2><a href="{{ url_for('queue') }}">Open live queue</a></div>
+    {% if board %}
+    <table><thead><tr><th>Doctor</th><th>Serving</th><th>Waiting</th><th>Done</th></tr></thead><tbody>
+      {% for b in board %}<tr>
+        <td>{{ b.doctor.full_name }}<small class="muted block">{{ b.doctor.department }}</small></td>
+        <td>{% if b.serving %}<span class="token">#{{ b.serving.token_no }}</span>{% else %}–{% endif %}</td>
+        <td>{{ b.waiting|length }}</td><td>{{ b.doctor.done }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p class="empty">No doctor has appointments today.</p>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Today's appointments</h2><a href="{{ url_for('appointments', date=today()) }}">See all</a></div>
+    {% if s.today_list %}
+    <ul class="list">{% for r in s.today_list %}
+      <li><b>{{ r.slot_time }}</b><span>{{ r.patient_name }}<small class="muted block">{{ r.doctor_name }}</small></span>{{ badge(r.status) }}</li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">Nothing scheduled for today.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

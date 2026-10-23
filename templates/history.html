@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block title %}History log{% endblock %}
+{% block heading %}Appointment history log{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted">Every booking, reschedule, check-in and cancellation is recorded automatically by database triggers. Entries cannot be edited or deleted.</p>
+  {% if rows %}<table><thead><tr><th>When</th><th>Appointment</th><th>Patient</th><th>Doctor</th><th>Event</th><th>Change</th></tr></thead><tbody>
+  {% for h in rows %}<tr><td>{{ h.changed_at }}</td><td>#{{ h.appointment_id }}</td><td>{{ h.patient_name }}</td><td>{{ h.doctor_name }}</td>
+    <td>{{ badge(h.action) if h.action == 'RESCHEDULED' else status_label(h.action) }}</td>
+    <td>{% if h.action == 'RESCHEDULED' %}{{ h.old_date }} {{ h.old_time }} → {{ h.new_date }} {{ h.new_time }}
+        {% elif h.old_status %}{{ status_label(h.old_status) }} → {{ status_label(h.new_status) }}
+        {% else %}{{ h.new_date }} {{ h.new_time }}{% endif %}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="empty">Nothing logged yet.</p>{% endif %}
+</div>
+{% endblock %}

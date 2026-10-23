@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Doctors & Schedules{% endblock %}
+{% block heading %}Doctors & Schedules{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h2>Specialist Directory ({{ rows|length }})</h2>
+    {% if is_admin() %}
+      <a class="btn primary" href="{{ url_for('doctor_new') }}">+ Register doctor</a>
+    {% else %}
+      <a class="btn primary" href="{{ url_for('appointment_book') }}">+ Book appointment</a>
+    {% endif %}
+  </div>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Doctor</th>
+          <th>Department</th>
+          <th>Specialization</th>
+          <th>Working Days</th>
+          <th>Hours</th>
+          <th>Consultation</th>
+          <th>Contact</th>
+          {% if is_patient() %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in rows %}
+          <tr>
+            <td><b>{{ d.full_name }}</b></td>
+            <td><span class="badge">{{ d.department }}</span></td>
+            <td>{{ d.specialization }}</td>
+            <td>{{ d.days }}</td>
+            <td><b>{{ d.hours }}</b></td>
+            <td>{{ d.consult_minutes }} min</td>
+            <td>{{ d.phone }}<small class="muted block">{{ d.email }}</small></td>
+            {% if is_patient() %}
+              <td class="right">
+                <a class="btn small primary" href="{{ url_for('appointment_book', doctor_id=d.doctor_id) }}">Book Slot</a>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No doctors listed.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Patients{% endblock %}
+{% block heading %}Patients{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <form method="get" class="inline"><input name="q" value="{{ q }}" placeholder="Name or phone"><button class="btn">Search</button></form>
+    <a class="btn primary" href="{{ url_for('patient_new') }}">+ Register patient</a>
+  </div>
+  {% if rows %}
+  <table><thead><tr><th>Name</th><th>Phone</th><th>Gender</th><th>Date of birth</th><th>Visits</th><th></th></tr></thead><tbody>
+  {% for p in rows %}<tr><td>{{ p.full_name }}</td><td>{{ p.phone }}</td><td>{{ p.gender }}</td><td>{{ p.date_of_birth }}</td><td>{{ p.visits }}</td>
+    <td class="right"><a href="{{ url_for('patient_detail', pid=p.patient_id) }}">History</a> ·
+    <a href="{{ url_for('appointment_book', patient_id=p.patient_id) }}">Book</a></td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="empty">No patients found. <a href="{{ url_for('patient_new') }}">Register the first patient</a>.</p>{% endif %}
+</div>
+{% endblock %}

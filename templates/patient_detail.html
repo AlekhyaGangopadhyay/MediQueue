@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block title %}{{ p.full_name }}{% endblock %}
+{% block heading %}{{ p.full_name }}{% endblock %}
+{% block content %}
+<section class="grid-2">
+  <div class="card"><h2>Details</h2>
+    <dl class="dl"><dt>Phone</dt><dd>{{ p.phone }}</dd><dt>Email</dt><dd>{{ p.email or '–' }}</dd>
+      <dt>Date of birth</dt><dd>{{ p.date_of_birth }}</dd><dt>Gender</dt><dd>{{ p.gender }}</dd>
+      <dt>Address</dt><dd>{{ p.address or '–' }}</dd><dt>Registered</dt><dd>{{ p.created_at }}</dd></dl>
+    <a class="btn primary" href="{{ url_for('appointment_book', patient_id=p.patient_id) }}">Book appointment</a>
+  </div>
+</section>
+<div class="card"><h2>Appointment and consultation history</h2>
+  {% if hist %}<table><thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th><th>Diagnosis</th><th>Prescription</th></tr></thead><tbody>
+  {% for h in hist %}<tr><td>{{ h.appt_date }}</td><td>{{ h.slot_time }}</td>
+    <td>{{ h.doctor_name }}<small class="muted block">{{ h.department }}</small></td><td>{{ badge(h.status) }}</td>
+    <td>{{ h.diagnosis or '–' }}</td><td>{{ h.prescription or '–' }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="empty">No appointments yet.</p>{% endif %}
+</div>
+{% endblock %}

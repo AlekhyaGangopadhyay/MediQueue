@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Live queue{% endblock %}
+{% block heading %}Live queue <span class="live"><i></i>updates every 10 s</span>{% endblock %}
+{% block content %}<div id="queue-root">{% include "_queue_board.html" %}</div>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}"></script>{% endblock %}

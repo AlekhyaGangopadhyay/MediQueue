@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Reschedule{% endblock %}
+{% block heading %}Reschedule appointment{% endblock %}
+{% block content %}
+<form method="post" class="card form" id="book-form">{{ csrf() }}
+  <p>{{ a.patient_name }} with {{ a.doctor_name }}, currently <b>{{ a.appt_date }} at {{ a.slot_time }}</b>.</p>
+  <label>New date<input type="date" name="appt_date" value="{{ request.form.get('appt_date', a.appt_date) }}" min="{{ today() }}" max="{{ max_date() }}" required></label>
+  <fieldset><legend>New time slot</legend>
+    <div class="slots" data-slot-picker data-doctor="{{ a.doctor_id }}" data-exclude="{{ a.appointment_id }}"
+         data-selected="{{ request.form.get('slot_time','') }}"><p class="muted">Loading slots…</p></div>
+  </fieldset>
+  <div class="row"><button class="btn primary">Reschedule</button><a class="btn" href="{{ url_for('appointments') }}">Back</a></div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}"></script>{% endblock %}

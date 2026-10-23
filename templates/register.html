@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Patient Registration{% endblock %}
+{% block auth_content %}
+<div class="card auth-card wide-card">
+  <h2>Patient Registration</h2>
+  <p class="muted">Create an account to book doctor appointments, track your queue status, and view your prescription history.</p>
+
+  <form method="post" action="{{ url_for('register') }}" class="form auth-form">
+    {{ csrf() }}
+    <label>Full Name
+      <input name="full_name" value="{{ f.get('full_name','') }}" placeholder="e.g. Rahul Sen" required minlength="2">
+    </label>
+
+    <div class="row">
+      <label>Date of Birth
+        <input type="date" name="date_of_birth" value="{{ f.get('date_of_birth','') }}" max="{{ today() }}" required>
+      </label>
+      <label>Gender
+        <select name="gender" required>
+          <option value="">Select</option>
+          {% for v, l in [('M','Male'),('F','Female'),('O','Other')] %}
+            <option value="{{ v }}" {{ 'selected' if f.get('gender')==v }}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Phone Number
+        <input name="phone" value="{{ f.get('phone','') }}" required inputmode="tel" placeholder="10-15 digits">
+      </label>
+      <label>Email Address (optional)
+        <input type="email" name="email" value="{{ f.get('email','') }}" placeholder="name@example.com">
+      </label>
+    </div>
+
+    <label>Address (optional)
+      <textarea name="address" rows="2" placeholder="Your current residential address">{{ f.get('address','') }}</textarea>
+    </label>
+
+    <div class="row">
+      <label>Password
+        <input type="password" name="password" required minlength="4" placeholder="Minimum 4 characters">
+      </label>
+      <label>Confirm Password
+        <input type="password" name="confirm_password" required minlength="4" placeholder="Re-enter password">
+      </label>
+    </div>
+
+    <button class="btn primary full-width">Complete Registration & Sign In</button>
+
+    <hr class="divider">
+    <p class="center muted small-text">
+      Already have an account? <a href="{{ url_for('login') }}">Sign in here</a>.
+    </p>
+  </form>
+</div>
+{% endblock %}

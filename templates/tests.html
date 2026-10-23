@@ -1,12 +1,15 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf %}
 {% block title %}Laboratory & Diagnostic Tests{% endblock %}
 {% block heading %}Laboratory & Diagnostic Tests{% endblock %}
 {% block content %}
 <!-- Available Diagnostic Tests -->
 <div class="card">
   <div class="card-head">
-    <h2>Diagnostic Test Catalog ({{ tests|length }})</h2>
-    <span class="muted">Standard pathology and radiology investigation tariffs</span>
+    <div>
+      <h2>Diagnostic Test Catalog ({{ tests|length }})</h2>
+      <span class="muted">Standard pathology and radiology investigation tariffs</span>
+    </div>
+    <a href="{{ url_for('test_book') }}" class="btn primary">+ Book Diagnostic Test</a>
   </div>
   {% if tests %}
     <table>
@@ -15,6 +18,7 @@
           <th>Test Name</th>
           <th>Category</th>
           <th>Standard Fee</th>
+          <th class="right">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -23,6 +27,9 @@
             <td><b>{{ t.test_name }}</b></td>
             <td><span class="badge">{{ t.test_type }}</span></td>
             <td><b>₹{{ "%.2f"|format(t.cost) }}</b></td>
+            <td class="right">
+              <a href="{{ url_for('test_book', test_id=t.test_id) }}" class="btn small primary">+ Book Test</a>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
@@ -31,6 +38,122 @@
     <p class="empty">No tests registered.</p>
   {% endif %}
 </div>
+
+<!-- My Diagnostic Bookings (Patient Only) -->
+{% if is_patient() %}
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>My Diagnostic Test Bookings ({{ my_bookings|length }})</h2>
+      <span class="muted">Your upcoming and scheduled laboratory & imaging investigations</span>
+    </div>
+    <a href="{{ url_for('test_book') }}" class="btn small primary">+ Schedule Another Test</a>
+  </div>
+  {% if my_bookings %}
+    <table>
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Investigation</th>
+          <th>Category</th>
+          <th>Scheduled Date</th>
+          <th>Time Slot</th>
+          <th>Standard Fee</th>
+          <th>Status</th>
+          <th>Notes</th>
+          <th class="right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in my_bookings %}
+          <tr>
+            <td><span class="token">#TB-{{ b.booking_id }}</span></td>
+            <td><b>{{ b.test_name }}</b></td>
+            <td><span class="badge">{{ b.test_type }}</span></td>
+            <td><b>{{ b.booking_date }}</b></td>
+            <td>{{ b.slot_time }}</td>
+            <td>₹{{ "%.2f"|format(b.cost) }}</td>
+            <td>{{ badge(b.status) }}</td>
+            <td><small class="muted">{{ b.notes or '–' }}</small></td>
+            <td class="right actions">
+              {% if b.status == 'BOOKED' %}
+                <form method="post" action="{{ url_for('test_booking_cancel', bid=b.booking_id) }}" style="display:inline">
+                  {{ csrf() }}
+                  <button class="link danger" onclick="return confirm('Cancel this diagnostic booking?')">Cancel</button>
+                </form>
+              {% else %}
+                <span class="muted">–</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">You have no active diagnostic test bookings. Choose an investigation above to schedule a slot.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- All Diagnostic Bookings (Admin Only) -->
+{% if is_admin() %}
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Diagnostic Test Bookings ({{ all_bookings|length }})</h2>
+      <span class="muted">All scheduled laboratory and imaging appointments</span>
+    </div>
+    <a href="{{ url_for('test_book') }}" class="btn small primary">+ Book For Patient</a>
+  </div>
+  {% if all_bookings %}
+    <table>
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Patient</th>
+          <th>Investigation</th>
+          <th>Category</th>
+          <th>Date & Time</th>
+          <th>Fee</th>
+          <th>Status</th>
+          <th>Notes</th>
+          <th class="right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in all_bookings %}
+          <tr>
+            <td><span class="token">#TB-{{ b.booking_id }}</span></td>
+            <td><b>{{ b.patient_name }}</b><small class="muted block">{{ b.patient_phone }}</small></td>
+            <td><b>{{ b.test_name }}</b></td>
+            <td><span class="badge">{{ b.test_type }}</span></td>
+            <td><b>{{ b.booking_date }}</b> at {{ b.slot_time }}</td>
+            <td>₹{{ "%.2f"|format(b.cost) }}</td>
+            <td>{{ badge(b.status) }}</td>
+            <td><small class="muted">{{ b.notes or '–' }}</small></td>
+            <td class="right actions">
+              {% if b.status == 'BOOKED' %}
+                <form method="post" action="{{ url_for('test_booking_complete', bid=b.booking_id) }}" style="display:inline">
+                  {{ csrf() }}
+                  <button class="btn small">Mark Done</button>
+                </form>
+                <form method="post" action="{{ url_for('test_booking_cancel', bid=b.booking_id) }}" style="display:inline">
+                  {{ csrf() }}
+                  <button class="link danger" onclick="return confirm('Cancel this diagnostic booking?')">Cancel</button>
+                </form>
+              {% else %}
+                <span class="muted">–</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No diagnostic test bookings recorded.</p>
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- All Patient Test Results (Admin only) -->
 {% if is_admin() and results %}

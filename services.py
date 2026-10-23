@@ -172,13 +172,15 @@ def patient_portal_data(conn, patient_id):
     history = patient_history(conn, patient_id)
     bills = list_bills(conn, patient_id)
     tests = list_test_results(conn, patient_id)
+    test_bookings = list_test_bookings(conn, patient_id=patient_id)
     return {
         "patient": patient,
         "today_appts": today_appts,
         "upcoming_appts": upcoming_appts,
         "history": history,
         "bills": bills,
-        "tests": tests
+        "tests": tests,
+        "test_bookings": test_bookings
     }
 
 
@@ -250,6 +252,13 @@ def list_tests(conn):
     return conn.execute("SELECT * FROM tests ORDER BY test_type, test_name").fetchall()
 
 
+def get_test(conn, test_id):
+    row = conn.execute("SELECT * FROM tests WHERE test_id = ?", (test_id,)).fetchone()
+    if not row:
+        raise AppError("Diagnostic test not found.")
+    return row
+
+
 def list_test_results(conn, patient_id=None):
     sql = """SELECT tr.*, t.test_name, t.test_type, t.cost, p.full_name AS patient_name, p.phone AS patient_phone
              FROM test_results tr
@@ -260,6 +269,98 @@ def list_test_results(conn, patient_id=None):
         sql += "WHERE tr.patient_id = ? "
         args.append(patient_id)
     return conn.execute(sql + "ORDER BY tr.result_date DESC, tr.result_id DESC", args).fetchall()
+
+
+def book_test(conn, form, patient_id=None):
+    try:
+        test_id = int(form.get("test_id", 0))
+    except (ValueError, TypeError):
+        raise AppError("Please select a diagnostic test.")
+
+    if patient_id is None:
+        try:
+            patient_id = int(form.get("patient_id", 0))
+        except (ValueError, TypeError):
+            raise AppError("Please select a valid patient.")
+
+    test = get_test(conn, test_id)
+    patient = get_patient(conn, patient_id)
+
+    b_date = _clean(form.get("booking_date"))
+    if not b_date:
+        raise AppError("Please choose a date for the diagnostic test.")
+    try:
+        dt = date.fromisoformat(b_date)
+    except ValueError:
+        raise AppError("Invalid date format (use YYYY-MM-DD).")
+    if dt < today():
+        raise AppError("Diagnostic test bookings cannot be made in the past.")
+
+    slot = _clean(form.get("slot_time"))
+    if not slot or not _TIME_RE.match(slot):
+        raise AppError("Please choose a valid appointment time slot.")
+
+    notes = _clean(form.get("notes", ""))
+
+    existing = conn.execute(
+        """SELECT booking_id FROM test_bookings
+           WHERE patient_id = ? AND test_id = ? AND booking_date = ? AND status = 'BOOKED'""",
+        (patient_id, test_id, b_date)
+    ).fetchone()
+    if existing:
+        raise AppError(f"{patient['full_name']} already has an active booking for {test['test_name']} on {b_date}.")
+
+    with transaction(conn):
+        cur = conn.execute(
+            """INSERT INTO test_bookings (test_id, patient_id, booking_date, slot_time, status, notes)
+               VALUES (?, ?, ?, ?, 'BOOKED', ?)""",
+            (test_id, patient_id, b_date, slot, notes)
+        )
+        return cur.lastrowid
+
+
+def cancel_test_booking(conn, booking_id, patient_id=None):
+    row = conn.execute("SELECT * FROM test_bookings WHERE booking_id = ?", (booking_id,)).fetchone()
+    if not row:
+        raise AppError("Test booking not found.")
+    if row["status"] != "BOOKED":
+        raise AppError(f"Cannot cancel a booking that is already {row['status'].lower()}.")
+    if patient_id is not None and row["patient_id"] != patient_id:
+        raise AppError("You can only cancel your own bookings.")
+
+    with transaction(conn):
+        conn.execute("UPDATE test_bookings SET status = 'CANCELLED' WHERE booking_id = ?", (booking_id,))
+
+
+def complete_test_booking(conn, booking_id):
+    row = conn.execute("SELECT * FROM test_bookings WHERE booking_id = ?", (booking_id,)).fetchone()
+    if not row:
+        raise AppError("Test booking not found.")
+    if row["status"] != "BOOKED":
+        raise AppError(f"Cannot complete a booking that is already {row['status'].lower()}.")
+
+    with transaction(conn):
+        conn.execute("UPDATE test_bookings SET status = 'COMPLETED' WHERE booking_id = ?", (booking_id,))
+
+
+def list_test_bookings(conn, patient_id=None, status=None):
+    sql = """SELECT tb.*, t.test_name, t.test_type, t.cost,
+                    p.full_name AS patient_name, p.phone AS patient_phone
+             FROM test_bookings tb
+             JOIN tests t ON t.test_id = tb.test_id
+             JOIN patients p ON p.patient_id = tb.patient_id """
+    clauses = []
+    args = []
+    if patient_id is not None:
+        clauses.append("tb.patient_id = ?")
+        args.append(patient_id)
+    if status:
+        clauses.append("tb.status = ?")
+        args.append(status)
+    if clauses:
+        sql += "WHERE " + " AND ".join(clauses) + " "
+    sql += "ORDER BY tb.booking_date DESC, tb.slot_time DESC, tb.booking_id DESC"
+    return conn.execute(sql, args).fetchall()
 
 
 # ------------------------------------------------------------------ doctors

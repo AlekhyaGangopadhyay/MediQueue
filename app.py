@@ -29,10 +29,25 @@ def create_app(config=None):
     os.makedirs(os.path.dirname(app.config["DATABASE"]) or ".", exist_ok=True)
     app.teardown_appcontext(db.close_db)
 
-    # Create tables on first run.
+    # Create tables on first run & ensure test_bookings table exists in existing databases
     boot = db.connect(app.config["DATABASE"])
     if not boot.execute("SELECT 1 FROM sqlite_master WHERE name = 'patients'").fetchone():
         db.init_db(boot)
+    else:
+        boot.execute("""
+            CREATE TABLE IF NOT EXISTS test_bookings (
+                booking_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                test_id       INTEGER NOT NULL REFERENCES tests(test_id) ON DELETE RESTRICT,
+                patient_id    INTEGER NOT NULL REFERENCES patients(patient_id) ON DELETE RESTRICT,
+                booking_date  TEXT NOT NULL,
+                slot_time     TEXT NOT NULL,
+                status        TEXT NOT NULL DEFAULT 'BOOKED' CHECK (status IN ('BOOKED','COMPLETED','CANCELLED')),
+                notes         TEXT,
+                created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+            );
+        """)
+        boot.execute("CREATE INDEX IF NOT EXISTS idx_test_bookings_patient ON test_bookings(patient_id, booking_date);")
+        boot.execute("CREATE INDEX IF NOT EXISTS idx_test_bookings_status ON test_bookings(status);")
     boot.close()
 
     # ---------------------------------------------------------- Auth & Sessions
@@ -276,8 +291,72 @@ def create_app(config=None):
             return req
         conn = db.get_db()
         tests = svc.list_tests(conn)
+        my_bookings = svc.list_test_bookings(conn, patient_id=current_user()["patient_id"]) if is_patient() else []
+        all_bookings = svc.list_test_bookings(conn) if is_admin() else []
         results = svc.list_test_results(conn) if is_admin() else []
-        return render_template("tests.html", tests=tests, results=results, page="tests")
+        return render_template("tests.html", tests=tests, my_bookings=my_bookings,
+                               all_bookings=all_bookings, results=results, page="tests")
+
+    @app.route("/tests/book", methods=["GET", "POST"])
+    def test_book():
+        req = require_login()
+        if req:
+            return req
+        conn = db.get_db()
+        tests = svc.list_tests(conn)
+        slots = ["07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "15:00", "16:00", "17:00"]
+        patients = svc.list_patients(conn) if is_admin() else []
+        selected_test_id = request.args.get("test_id")
+        try:
+            selected_test_id = int(selected_test_id) if selected_test_id else None
+        except ValueError:
+            selected_test_id = None
+
+        if request.method == "POST":
+            pid = current_user()["patient_id"] if is_patient() else None
+            try:
+                bid = svc.book_test(conn, request.form, patient_id=pid)
+                flash("Diagnostic test booked successfully! Our lab team will be ready for your sample collection.", "ok")
+                return redirect(url_for("lab_tests"))
+            except AppError as exc:
+                flash(str(exc), "error")
+
+        return render_template(
+            "test_book.html",
+            tests=tests,
+            slots=slots,
+            patients=patients,
+            selected_test_id=selected_test_id,
+            today=svc.today().isoformat(),
+            page="tests"
+        )
+
+    @app.post("/tests/bookings/<int:bid>/cancel")
+    def test_booking_cancel(bid):
+        req = require_login()
+        if req:
+            return req
+        conn = db.get_db()
+        pid = current_user()["patient_id"] if is_patient() else None
+        try:
+            svc.cancel_test_booking(conn, bid, patient_id=pid)
+            flash("Diagnostic test booking cancelled.", "ok")
+        except AppError as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("lab_tests"))
+
+    @app.post("/tests/bookings/<int:bid>/complete")
+    def test_booking_complete(bid):
+        req = require_admin()
+        if req:
+            return req
+        conn = db.get_db()
+        try:
+            svc.complete_test_booking(conn, bid)
+            flash("Diagnostic test marked as completed.", "ok")
+        except AppError as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("lab_tests"))
 
     # ---------------------------------------------------------- Doctors (All logged-in)
     @app.get("/doctors")

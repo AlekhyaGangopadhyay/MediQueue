@@ -1,0 +1,109 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Book Diagnostic Test{% endblock %}
+{% block heading %}Book Diagnostic Test{% endblock %}
+{% block content %}
+<div class="card form-container">
+  <form method="post" class="card form" id="test-book-form">
+    {{ csrf() }}
+    <div class="card-head" style="margin-bottom: 6px;">
+      <h2>Laboratory & Imaging Investigation Booking</h2>
+      <a href="{{ url_for('lab_tests') }}" class="btn small">Back to Catalog</a>
+    </div>
+    <p class="muted" style="margin-top: 0; margin-bottom: 16px;">
+      Schedule pathology blood tests, radiology scans, and cardiac diagnostics.
+    </p>
+
+    <div class="row">
+      {% if is_patient() %}
+        <div class="patient-fixed-info">
+          <label>Patient</label>
+          <div class="fixed-val">
+            <b>{{ current_user().name }}</b> · {{ current_user().phone }}
+            <input type="hidden" name="patient_id" value="{{ current_user().patient_id }}">
+          </div>
+        </div>
+      {% else %}
+        <label>Patient
+          <select name="patient_id" required>
+            <option value="">Select patient</option>
+            {% for p in patients %}
+              <option value="{{ p.patient_id }}">
+                {{ p.full_name }} · {{ p.phone }} ({{ p.blood_group or 'N/A' }})
+              </option>
+            {% endfor %}
+          </select>
+          <small class="muted">Not registered yet? <a href="{{ url_for('patient_new') }}">Register patient</a></small>
+        </label>
+      {% endif %}
+
+      <label>Diagnostic Test / Investigation
+        <select name="test_id" id="test_select" required onchange="updateTestDetails()">
+          <option value="">Select diagnostic test</option>
+          {% for t in tests %}
+            <option value="{{ t.test_id }}" data-cost="{{ t.cost }}" data-type="{{ t.test_type }}" {{ 'selected' if selected_test_id == t.test_id }}>
+              {{ t.test_name }} — {{ t.test_type }} (₹{{ "%.2f"|format(t.cost) }})
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Preferred Date
+        <input type="date" name="booking_date" value="{{ today }}" min="{{ today }}" required>
+      </label>
+
+      <div style="flex: 1;">
+        <label>Selected Test Tariff</label>
+        <div class="fixed-val" id="fee_display">
+          <b id="fee_amount">Select a test above</b>
+        </div>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>Preferred Time Slot</legend>
+      <div class="slots" style="margin-top: 8px;">
+        {% for s in slots %}
+          <label class="slot">
+            <input type="radio" name="slot_time" value="{{ s }}" {{ 'checked' if loop.index == 3 else '' }} required>
+            <span>{{ s }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <label>Special Instructions / Clinical Notes (optional)
+      <input name="notes" maxlength="250" placeholder="e.g., 12-hr fasting sample, referring doctor Dr. Rajesh Kumar, wheelchair assistance">
+    </label>
+
+    <div class="card" style="background: #f8fafc; border: 1px dashed var(--line); margin: 6px 0 10px;">
+      <b style="color: var(--brand);">Diagnostic Center Information & Instructions:</b>
+      <ul style="margin: 6px 0 0 18px; padding: 0; font-size: 13px; color: var(--muted);">
+        <li><b>Blood Tests:</b> Fasting blood sugar & lipid profiles require 10–12 hours overnight fasting. Water is permitted.</li>
+        <li><b>Radiology & Scans:</b> Please arrive 15 minutes before your scheduled scan slot.</li>
+        <li><b>Sample Collection:</b> Pathology collection booth is located at Ground Floor, Diagnostic Wing.</li>
+      </ul>
+    </div>
+
+    <div class="actions" style="justify-content: flex-start; gap: 14px; margin-top: 10px;">
+      <button class="btn primary" type="submit">Confirm Diagnostic Booking</button>
+      <a href="{{ url_for('lab_tests') }}" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateTestDetails() {
+  const sel = document.getElementById('test_select');
+  const opt = sel.options[sel.selectedIndex];
+  const feeDisplay = document.getElementById('fee_amount');
+  if (opt && opt.dataset.cost) {
+    feeDisplay.innerHTML = '₹' + parseFloat(opt.dataset.cost).toFixed(2) + ' <small class="muted">(' + opt.dataset.type + ')</small>';
+  } else {
+    feeDisplay.innerHTML = 'Select a test above';
+  }
+}
+document.addEventListener('DOMContentLoaded', updateTestDetails);
+</script>
+{% endblock %}

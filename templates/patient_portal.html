@@ -182,12 +182,65 @@
   {% endif %}
 </section>
 
-<!-- My Lab Test Results -->
+<!-- My Lab Test Results & Scheduled Bookings -->
 <section class="card">
   <div class="card-head">
-    <h2>My Laboratory & Diagnostic Reports</h2>
-    <a href="{{ url_for('lab_tests') }}" class="btn small">View All Tests</a>
+    <div>
+      <h2>My Laboratory & Diagnostic Services</h2>
+      <span class="muted">Scheduled test appointments and certified lab results</span>
+    </div>
+    <div class="actions">
+      <a href="{{ url_for('test_book') }}" class="btn small primary">+ Book Diagnostic Test</a>
+      <a href="{{ url_for('lab_tests') }}" class="btn small">Test Catalog</a>
+    </div>
   </div>
+
+  <!-- Scheduled Test Bookings -->
+  <h3 style="margin-top: 10px;">Upcoming Test Appointments</h3>
+  {% if data.test_bookings %}
+    <table>
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Investigation</th>
+          <th>Category</th>
+          <th>Date</th>
+          <th>Slot</th>
+          <th>Fee</th>
+          <th>Status</th>
+          <th class="right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in data.test_bookings %}
+          <tr>
+            <td><span class="token">#TB-{{ b.booking_id }}</span></td>
+            <td><b>{{ b.test_name }}</b></td>
+            <td><span class="badge">{{ b.test_type }}</span></td>
+            <td><b>{{ b.booking_date }}</b></td>
+            <td>{{ b.slot_time }}</td>
+            <td>₹{{ "%.2f"|format(b.cost) }}</td>
+            <td>{{ badge(b.status) }}</td>
+            <td class="right actions">
+              {% if b.status == 'BOOKED' %}
+                <form method="post" action="{{ url_for('test_booking_cancel', bid=b.booking_id) }}" style="display:inline">
+                  {{ csrf() }}
+                  <button class="link danger" onclick="return confirm('Cancel this diagnostic booking?')">Cancel</button>
+                </form>
+              {% else %}
+                <span class="muted">–</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty small">No scheduled diagnostic tests. <a href="{{ url_for('test_book') }}">Book a pathology or imaging test</a>.</p>
+  {% endif %}
+
+  <!-- Completed Lab Test Results -->
+  <h3 style="margin-top: 22px;">Completed Diagnostic & Pathology Reports</h3>
   {% if data.tests %}
     <table>
       <thead>
@@ -214,7 +267,7 @@
       </tbody>
     </table>
   {% else %}
-    <p class="empty">No laboratory reports found for your account.</p>
+    <p class="empty small">No completed laboratory reports found for your account.</p>
   {% endif %}
 </section>
 

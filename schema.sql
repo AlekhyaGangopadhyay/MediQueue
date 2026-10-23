@@ -157,6 +157,20 @@ CREATE TABLE test_results (
     result_date  TEXT NOT NULL
 );
 
+CREATE TABLE test_bookings (
+    booking_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    test_id       INTEGER NOT NULL REFERENCES tests(test_id) ON DELETE RESTRICT,
+    patient_id    INTEGER NOT NULL REFERENCES patients(patient_id) ON DELETE RESTRICT,
+    booking_date  TEXT NOT NULL,
+    slot_time     TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'BOOKED' CHECK (status IN ('BOOKED','COMPLETED','CANCELLED')),
+    notes         TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+
+CREATE INDEX idx_test_bookings_patient ON test_bookings(patient_id, booking_date);
+CREATE INDEX idx_test_bookings_status ON test_bookings(status);
+
 -- ---------- Billing & Payments ------------------------------------------
 CREATE TABLE bills (
     bill_id        INTEGER PRIMARY KEY AUTOINCREMENT,

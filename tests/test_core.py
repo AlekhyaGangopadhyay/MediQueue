@@ -37,6 +37,7 @@ class Base(unittest.TestCase):
             c.execute("INSERT INTO patients (full_name, date_of_birth, gender, phone) VALUES (?,?,?,?)",
                       (f"Patient {i}", "1990-01-01", "M", f"90000001{i:02d}"))
         c.execute("INSERT INTO admins (username, password_hash, full_name) VALUES ('admin', 'x', 'Admin')")
+        c.execute("INSERT INTO tests (test_name, test_type, cost) VALUES ('Complete Blood Count', 'Blood Test', 500.0)")
 
     def tearDown(self):
         self.conn.close()
@@ -328,6 +329,60 @@ class TestAuth(Base):
         # Try to cancel Patient 2's appointment
         r = self.client.post(f"/appointments/{a2}/cancel", data={"csrf_token": "tok"}, follow_redirects=True)
         self.assertIn(b"You can only cancel your own appointments", r.data)
+
+    def test_diagnostic_test_booking_service(self):
+        # Book a test
+        bid = svc.book_test(self.conn, {
+            "test_id": 1,
+            "booking_date": TOMORROW,
+            "slot_time": "09:00",
+            "notes": "Fasting sample"
+        }, patient_id=1)
+        self.assertGreater(bid, 0)
+
+        # Duplicate booking on same day rejected
+        with self.assertRaises(AppError):
+            svc.book_test(self.conn, {
+                "test_id": 1,
+                "booking_date": TOMORROW,
+                "slot_time": "10:00",
+            }, patient_id=1)
+
+        # List bookings
+        bookings = svc.list_test_bookings(self.conn, patient_id=1)
+        self.assertEqual(len(bookings), 1)
+        self.assertEqual(bookings[0]["test_name"], "Complete Blood Count")
+        self.assertEqual(bookings[0]["status"], "BOOKED")
+
+        # Cancel booking
+        svc.cancel_test_booking(self.conn, bid, patient_id=1)
+        bookings = svc.list_test_bookings(self.conn, patient_id=1)
+        self.assertEqual(bookings[0]["status"], "CANCELLED")
+
+    def test_diagnostic_test_booking_route(self):
+        with self.client.session_transaction() as s:
+            s["csrf"] = "tok"
+            s["user"] = {"role": "patient", "patient_id": 1, "name": "Patient 1", "phone": "9000000101"}
+
+        # Book via web route
+        r = self.client.post("/tests/book", data={
+            "csrf_token": "tok",
+            "test_id": "1",
+            "booking_date": TOMORROW,
+            "slot_time": "09:30",
+            "notes": "Web booking"
+        }, follow_redirects=True)
+        self.assertIn(b"Diagnostic test booked successfully", r.data)
+
+        # Check /tests page shows the booking
+        r = self.client.get("/tests")
+        self.assertIn(b"Complete Blood Count", r.data)
+        self.assertIn(b"#TB-", r.data)
+
+        # Check /portal shows the booking
+        r = self.client.get("/portal")
+        self.assertIn(b"Complete Blood Count", r.data)
+        self.assertIn(b"#TB-", r.data)
 
 
 if __name__ == "__main__":

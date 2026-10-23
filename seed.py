@@ -228,7 +228,24 @@ def seed(conn):
                 "VALUES (?,?,?,?,?,?,?)",
                 (aid, f"{past_date} {slot}:00", f"{past_date} {slot}:15", diag, rx, treat, notes))
 
-    # 11. Today's live appointments & Queue for demonstration
+        # 11. Diagnostic Test Bookings
+        tomorrow = (svc.today() + timedelta(days=1)).isoformat()
+        day_after = (svc.today() + timedelta(days=2)).isoformat()
+        sample_bookings = [
+            (patient_ids[0], test_ids[0], tomorrow, "08:30", "BOOKED", "Fasting blood sugar 12-hr check"),
+            (patient_ids[0], test_ids[1], tomorrow, "09:00", "BOOKED", "Routine hemogram test"),
+            (patient_ids[1], test_ids[6], day_after, "10:30", "BOOKED", "Referred by Dr. Rajesh Kumar for Abdominal scan"),
+            (patient_ids[2], test_ids[5], tomorrow, "11:00", "BOOKED", "Cardiac follow up test"),
+            (patient_ids[3], test_ids[7], day_after, "14:00", "BOOKED", "MRI brain investigation"),
+        ]
+        for pid, tid, bdate, slot, st, notes in sample_bookings:
+            conn.execute(
+                "INSERT INTO test_bookings (patient_id, test_id, booking_date, slot_time, status, notes) "
+                "VALUES (?,?,?,?,?,?)",
+                (pid, tid, bdate, slot, st, notes)
+            )
+
+    # 12. Today's live appointments & Queue for demonstration
     day = svc.today()
     live_appts = []
     for i, doc_id in enumerate(doctor_ids[:4]):

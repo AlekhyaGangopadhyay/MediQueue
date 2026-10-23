@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Laboratory & Diagnostic Tests{% endblock %}
+{% block heading %}Laboratory & Diagnostic Tests{% endblock %}
+{% block content %}
+<!-- Available Diagnostic Tests -->
+<div class="card">
+  <div class="card-head">
+    <h2>Diagnostic Test Catalog ({{ tests|length }})</h2>
+    <span class="muted">Standard pathology and radiology investigation tariffs</span>
+  </div>
+  {% if tests %}
+    <table>
+      <thead>
+        <tr>
+          <th>Test Name</th>
+          <th>Category</th>
+          <th>Standard Fee</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tests %}
+          <tr>
+            <td><b>{{ t.test_name }}</b></td>
+            <td><span class="badge">{{ t.test_type }}</span></td>
+            <td><b>₹{{ "%.2f"|format(t.cost) }}</b></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No tests registered.</p>
+  {% endif %}
+</div>
+
+<!-- All Patient Test Results (Admin only) -->
+{% if is_admin() and results %}
+<div class="card">
+  <div class="card-head">
+    <h2>Recent Laboratory Results ({{ results|length }})</h2>
+    <span class="muted">Diagnostic investigation records for hospital patients</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Patient</th>
+        <th>Investigation</th>
+        <th>Category</th>
+        <th>Result Value</th>
+        <th>Unit</th>
+        <th>Reference Range</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+        <tr>
+          <td>{{ r.result_date }}</td>
+          <td><b>{{ r.patient_name }}</b><small class="muted block">{{ r.patient_phone }}</small></td>
+          <td><b>{{ r.test_name }}</b></td>
+          <td><span class="badge">{{ r.test_type }}</span></td>
+          <td><b class="{{ 'danger' if r.result_value != 'Normal' and r.result_value != '95' else '' }}">{{ r.result_value }}</b></td>
+          <td>{{ r.unit }}</td>
+          <td><small class="muted">{{ r.normal_range }}</small></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

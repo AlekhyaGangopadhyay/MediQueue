@@ -1,12 +1,16 @@
 -- =====================================================================
 -- Hospital Appointment & Queue Management System  -  schema (SQLite)
+-- Integrated with HMS_aiml_22 (Departments, Doctors, Patients,
+-- Rooms, Staff, Billing, Lab Tests, Medical Records)
 -- =====================================================================
 PRAGMA foreign_keys = ON;
 
 -- ---------- Reference data -------------------------------------------
 CREATE TABLE departments (
     dept_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    name      TEXT NOT NULL UNIQUE
+    name      TEXT NOT NULL UNIQUE,
+    location  TEXT,
+    phone     TEXT
 );
 
 -- ---------- Doctors ----------------------------------------------------
@@ -48,12 +52,34 @@ CREATE TABLE patients (
     patient_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name     TEXT NOT NULL,
     date_of_birth TEXT NOT NULL,
-    gender        TEXT NOT NULL CHECK (gender IN ('M', 'F', 'O')),
+    gender        TEXT NOT NULL CHECK (gender IN ('M', 'F', 'O', 'Male', 'Female', 'Other')),
     phone         TEXT NOT NULL UNIQUE,
     email         TEXT UNIQUE,
     address       TEXT,
+    blood_group   TEXT,
     password_hash TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+
+-- ---------- Rooms & Wards ----------------------------------------------
+CREATE TABLE rooms (
+    room_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_no       TEXT NOT NULL UNIQUE,
+    room_type     TEXT NOT NULL,
+    floor         INTEGER,
+    status        TEXT NOT NULL DEFAULT 'Available',
+    daily_charge  REAL NOT NULL DEFAULT 1000.0,
+    dept_id       INTEGER REFERENCES departments(dept_id) ON DELETE SET NULL
+);
+
+-- ---------- Staff ------------------------------------------------------
+CREATE TABLE staff (
+    staff_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name   TEXT NOT NULL,
+    role        TEXT NOT NULL,
+    phone       TEXT,
+    email       TEXT,
+    room_id     INTEGER REFERENCES rooms(room_id) ON DELETE SET NULL
 );
 
 -- ---------- Appointments ------------------------------------------------
@@ -70,10 +96,7 @@ CREATE TABLE appointments (
     created_at     TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
--- DOUBLE-BOOKING PREVENTION (enforced by the database itself, not just by app code):
---   * a doctor can have only ONE live appointment per date+slot
---   * a patient can have only ONE live appointment per date+slot
--- "Live" = not CANCELLED / NO_SHOW, so a freed slot can be booked again.
+-- DOUBLE-BOOKING PREVENTION:
 CREATE UNIQUE INDEX uq_doctor_slot_live
     ON appointments (doctor_id, appt_date, slot_time)
     WHERE status NOT IN ('CANCELLED', 'NO_SHOW');
@@ -86,8 +109,6 @@ CREATE INDEX idx_appt_date   ON appointments (appt_date);
 CREATE INDEX idx_appt_doctor ON appointments (doctor_id, appt_date);
 
 -- ---------- Queue tokens ------------------------------------------------
--- One token per appointment, issued at check-in. doctor_id/queue_date are copied
--- from the appointment on purpose so token numbers can be made unique per doctor per day.
 CREATE TABLE queue_tokens (
     token_id       INTEGER PRIMARY KEY AUTOINCREMENT,
     appointment_id INTEGER NOT NULL UNIQUE REFERENCES appointments(appointment_id) ON DELETE RESTRICT,
@@ -102,12 +123,11 @@ CREATE TABLE queue_tokens (
     UNIQUE (doctor_id, queue_date, token_no)
 );
 
--- A doctor can be consulting at most ONE patient at a time.
 CREATE UNIQUE INDEX uq_one_called_per_doctor
     ON queue_tokens (doctor_id, queue_date)
     WHERE status = 'CALLED';
 
--- ---------- Consultation history ----------------------------------------
+-- ---------- Consultation history & Medical Records ----------------------
 CREATE TABLE consultations (
     consultation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     appointment_id  INTEGER NOT NULL UNIQUE REFERENCES appointments(appointment_id) ON DELETE RESTRICT,
@@ -115,7 +135,45 @@ CREATE TABLE consultations (
     ended_at        TEXT,
     diagnosis       TEXT,
     prescription    TEXT,
+    treatment       TEXT,
     notes           TEXT
+);
+
+-- ---------- Laboratory & Tests ------------------------------------------
+CREATE TABLE tests (
+    test_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    test_name TEXT NOT NULL,
+    test_type TEXT,
+    cost      REAL NOT NULL
+);
+
+CREATE TABLE test_results (
+    result_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    test_id      INTEGER NOT NULL REFERENCES tests(test_id) ON DELETE RESTRICT,
+    patient_id   INTEGER NOT NULL REFERENCES patients(patient_id) ON DELETE RESTRICT,
+    result_value TEXT,
+    unit         TEXT,
+    normal_range TEXT,
+    result_date  TEXT NOT NULL
+);
+
+-- ---------- Billing & Payments ------------------------------------------
+CREATE TABLE bills (
+    bill_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id     INTEGER NOT NULL REFERENCES patients(patient_id) ON DELETE RESTRICT,
+    bill_date      TEXT NOT NULL,
+    total_amount   REAL NOT NULL,
+    amount_paid    REAL NOT NULL DEFAULT 0.0,
+    payment_status TEXT NOT NULL DEFAULT 'Pending'
+);
+
+CREATE TABLE payments (
+    payment_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    bill_id        INTEGER NOT NULL REFERENCES bills(bill_id) ON DELETE CASCADE,
+    payment_date   TEXT NOT NULL,
+    amount         REAL NOT NULL,
+    payment_mode   TEXT NOT NULL,
+    transaction_no TEXT NOT NULL
 );
 
 -- ---------- Appointment history (append-only audit trail) ---------------
@@ -157,9 +215,6 @@ CREATE TRIGGER trg_history_no_delete BEFORE DELETE ON appointment_history
 BEGIN SELECT RAISE(ABORT, 'appointment_history is append-only'); END;
 
 -- ---------- Views ---------------------------------------------------------
--- Queue with the estimated position and wait for each token.
---   people_ahead = tokens of the same doctor+day with a smaller number that are still
---                  WAITING or CALLED (a patient being seen counts as one full consultation).
 CREATE VIEW v_queue AS
 SELECT  t.token_id, t.token_no, t.status AS token_status, t.queue_date, t.issued_at, t.called_at,
         a.appointment_id, a.slot_time, a.reason,

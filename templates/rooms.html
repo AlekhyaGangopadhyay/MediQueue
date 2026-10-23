@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Hospital Rooms & Wards{% endblock %}
+{% block heading %}Rooms & Inpatient Wards{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h2>Room Capacity & Occupancy ({{ rows|length }} rooms)</h2>
+    <span class="muted">Live status of General, Private, and ICU wards</span>
+  </div>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Room No</th>
+          <th>Ward Type</th>
+          <th>Floor</th>
+          <th>Associated Department</th>
+          <th>Daily Charge</th>
+          <th>Occupancy Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td><b class="token">Room {{ r.room_no }}</b></td>
+            <td><b>{{ r.room_type }}</b></td>
+            <td>Floor {{ r.floor }}</td>
+            <td>{{ r.department_name or 'General Services' }}</td>
+            <td><b>₹{{ "%.2f"|format(r.daily_charge) }}</b> / day</td>
+            <td>
+              {% if r.status == 'Available' %}
+                <span class="badge s-completed">Available</span>
+              {% elif r.status == 'Occupied' %}
+                <span class="badge s-booked">Occupied</span>
+              {% else %}
+                <span class="badge">{{ r.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No room information registered.</p>
+  {% endif %}
+</div>
+{% endblock %}

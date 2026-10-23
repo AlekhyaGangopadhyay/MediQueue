@@ -233,12 +233,51 @@ def create_app(config=None):
         req = require_admin()
         if req:
             return req
+        conn = db.get_db()
         try:
-            p = svc.get_patient(db.get_db(), pid)
+            p = svc.get_patient(conn, pid)
         except AppError:
             abort(404)
-        return render_template("patient_detail.html", p=p, hist=svc.patient_history(db.get_db(), pid),
+        return render_template("patient_detail.html", p=p,
+                               hist=svc.patient_history(conn, pid),
+                               bills=svc.list_bills(conn, pid),
+                               tests=svc.list_test_results(conn, pid),
                                page="patients")
+
+    # ---------------------------------------------------------- Rooms & Wards (HMS_aiml_22)
+    @app.get("/rooms")
+    def rooms():
+        req = require_login()
+        if req:
+            return req
+        return render_template("rooms.html", rows=svc.list_rooms(db.get_db()), page="rooms")
+
+    # ---------------------------------------------------------- Staff Directory (HMS_aiml_22)
+    @app.get("/staff")
+    def staff():
+        req = require_admin()
+        if req:
+            return req
+        return render_template("staff.html", rows=svc.list_staff(db.get_db()), page="staff")
+
+    # ---------------------------------------------------------- Billing & Payments (HMS_aiml_22)
+    @app.get("/billing")
+    def billing():
+        req = require_admin()
+        if req:
+            return req
+        return render_template("billing.html", rows=svc.list_bills(db.get_db()), page="billing")
+
+    # ---------------------------------------------------------- Laboratory & Tests (HMS_aiml_22)
+    @app.get("/tests")
+    def lab_tests():
+        req = require_login()
+        if req:
+            return req
+        conn = db.get_db()
+        tests = svc.list_tests(conn)
+        results = svc.list_test_results(conn) if is_admin() else []
+        return render_template("tests.html", tests=tests, results=results, page="tests")
 
     # ---------------------------------------------------------- Doctors (All logged-in)
     @app.get("/doctors")

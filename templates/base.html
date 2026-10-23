@@ -25,15 +25,22 @@
         <a href="{{ url_for('dashboard') }}" class="{{ 'on' if page=='dashboard' }}">Dashboard</a>
         <a href="{{ url_for('queue') }}" class="{{ 'on' if page=='queue' }}">Live queue</a>
         <a href="{{ url_for('appointments') }}" class="{{ 'on' if page=='appointments' }}">Appointments</a>
-        <p class="nav-h">Management</p>
+        <p class="nav-h">Clinical & Wards</p>
         <a href="{{ url_for('patients') }}" class="{{ 'on' if page=='patients' }}">Patients</a>
         <a href="{{ url_for('doctors') }}" class="{{ 'on' if page=='doctors' }}">Doctors</a>
-        <a href="{{ url_for('history') }}" class="{{ 'on' if page=='history' }}">History log</a>
+        <a href="{{ url_for('rooms') }}" class="{{ 'on' if page=='rooms' }}">Rooms & Wards</a>
+        <a href="{{ url_for('staff') }}" class="{{ 'on' if page=='staff' }}">Staff Directory</a>
+        <p class="nav-h">Hospital Operations</p>
+        <a href="{{ url_for('billing') }}" class="{{ 'on' if page=='billing' }}">Billing & Payments</a>
+        <a href="{{ url_for('lab_tests') }}" class="{{ 'on' if page=='tests' }}">Lab & Diagnostics</a>
+        <a href="{{ url_for('history') }}" class="{{ 'on' if page=='history' }}">Audit History</a>
       {% else %}
         <p class="nav-h">Patient Menu</p>
-        <a href="{{ url_for('patient_portal') }}" class="{{ 'on' if page=='portal' }}">My Portal & History</a>
+        <a href="{{ url_for('patient_portal') }}" class="{{ 'on' if page=='portal' }}">My Portal & Records</a>
         <a href="{{ url_for('appointment_book') }}" class="{{ 'on' if page=='book' }}">Book Appointment</a>
         <a href="{{ url_for('doctors') }}" class="{{ 'on' if page=='doctors' }}">Doctor Schedules</a>
+        <a href="{{ url_for('rooms') }}" class="{{ 'on' if page=='rooms' }}">Ward & Room Tariffs</a>
+        <a href="{{ url_for('lab_tests') }}" class="{{ 'on' if page=='tests' }}">Diagnostic Tests</a>
       {% endif %}
       <p class="nav-h">Account</p>
       <form method="post" action="{{ url_for('logout') }}" class="logout-form">

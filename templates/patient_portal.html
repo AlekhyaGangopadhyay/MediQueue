@@ -10,6 +10,7 @@
       <span>📞 {{ data.patient.phone }}</span>
       {% if data.patient.email %}<span>✉️ {{ data.patient.email }}</span>{% endif %}
       <span>🎂 DOB: {{ data.patient.date_of_birth }} ({{ data.patient.gender }})</span>
+      {% if data.patient.blood_group %}<span>🩸 Blood: <b>{{ data.patient.blood_group }}</b></span>{% endif %}
       {% if data.patient.address %}<span>📍 {{ data.patient.address }}</span>{% endif %}
     </div>
   </div>
@@ -137,7 +138,7 @@
 <!-- Past Consultations & Prescriptions -->
 <section class="card">
   <div class="card-head">
-    <h2>My Consultation & Prescription History</h2>
+    <h2>My Consultation & Medical Records</h2>
   </div>
   {% if data.history %}
     <table>
@@ -148,6 +149,7 @@
           <th>Department</th>
           <th>Status</th>
           <th>Diagnosis</th>
+          <th>Treatment Plan</th>
           <th>Prescription & Notes</th>
         </tr>
       </thead>
@@ -159,6 +161,7 @@
             <td>{{ h.department }}</td>
             <td>{{ badge(h.status) }}</td>
             <td><b>{{ h.diagnosis or '–' }}</b></td>
+            <td><span class="badge">{{ h.treatment or 'Medication' }}</span></td>
             <td>
               {% if h.prescription %}
                 <div class="rx-block"><b>Rx:</b> {{ h.prescription }}</div>
@@ -176,6 +179,100 @@
     </table>
   {% else %}
     <p class="empty">No medical history records yet.</p>
+  {% endif %}
+</section>
+
+<!-- My Lab Test Results -->
+<section class="card">
+  <div class="card-head">
+    <h2>My Laboratory & Diagnostic Reports</h2>
+    <a href="{{ url_for('lab_tests') }}" class="btn small">View All Tests</a>
+  </div>
+  {% if data.tests %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Investigation</th>
+          <th>Category</th>
+          <th>Observed Value</th>
+          <th>Unit</th>
+          <th>Biological Reference Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in data.tests %}
+          <tr>
+            <td>{{ t.result_date }}</td>
+            <td><b>{{ t.test_name }}</b></td>
+            <td><span class="badge">{{ t.test_type }}</span></td>
+            <td><b class="{{ 'danger' if t.result_value != 'Normal' and t.result_value != '95' else '' }}">{{ t.result_value }}</b></td>
+            <td>{{ t.unit }}</td>
+            <td><small class="muted">{{ t.normal_range }}</small></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No laboratory reports found for your account.</p>
+  {% endif %}
+</section>
+
+<!-- My Invoices & Payment History -->
+<section class="card">
+  <div class="card-head">
+    <h2>My Invoices & Payment Receipts</h2>
+  </div>
+  {% if data.bills %}
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Billing Date</th>
+          <th>Total Amount</th>
+          <th>Amount Paid</th>
+          <th>Balance Due</th>
+          <th>Status</th>
+          <th>Transaction Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in data.bills %}
+          <tr>
+            <td><b class="token">#INV-{{ "%03d"|format(b.bill_id) }}</b></td>
+            <td>{{ b.bill_date }}</td>
+            <td><b>₹{{ "%.2f"|format(b.total_amount) }}</b></td>
+            <td class="ok-text">₹{{ "%.2f"|format(b.amount_paid) }}</td>
+            <td>
+              {% set bal = b.total_amount - b.amount_paid %}
+              {% if bal > 0 %}
+                <span class="danger font-semibold">₹{{ "%.2f"|format(bal) }}</span>
+              {% else %}
+                <span class="muted">₹0.00</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if b.payment_status == 'Paid' %}
+                <span class="badge s-completed">Paid</span>
+              {% elif b.payment_status == 'Partial' %}
+                <span class="badge s-waiting">Partial</span>
+              {% else %}
+                <span class="badge s-cancelled">Pending</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if b.payment_details %}
+                <small class="muted">{{ b.payment_details }}</small>
+              {% else %}
+                <small class="muted">–</small>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No billing statements available.</p>
   {% endif %}
 </section>
 {% endblock %}

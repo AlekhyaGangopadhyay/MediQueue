@@ -114,9 +114,10 @@ def add_patient(conn, form, password=None):
     if dob > today():
         raise AppError("Date of birth cannot be in the future.")
     gender = _clean(form.get("gender"))
-    if gender not in ("M", "F", "O"):
+    if gender not in ("M", "F", "O", "Male", "Female", "Other"):
         raise AppError("Select a gender.")
     phone, email = _phone(form.get("phone")), _email(form.get("email"))
+    blood_group = _clean(form.get("blood_group")) or None
     pwd = password or form.get("password") or "patient123"
     if len(pwd) < 4:
         raise AppError("Password must have at least 4 characters.")
@@ -124,9 +125,9 @@ def add_patient(conn, form, password=None):
     try:
         with transaction(conn):
             cur = conn.execute(
-                "INSERT INTO patients (full_name, date_of_birth, gender, phone, email, address, password_hash) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (name, dob.isoformat(), gender, phone, email, _clean(form.get("address")) or None, pwd_hash))
+                "INSERT INTO patients (full_name, date_of_birth, gender, phone, email, address, blood_group, password_hash) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (name, dob.isoformat(), gender, phone, email, _clean(form.get("address")) or None, blood_group, pwd_hash))
     except sqlite3.IntegrityError as exc:
         raise AppError(_integrity_message(exc))
     return cur.lastrowid
@@ -167,13 +168,17 @@ def patient_portal_data(conn, patient_id):
            JOIN departments dep ON dep.dept_id = d.dept_id
            WHERE a.patient_id = ? AND a.appt_date > ? AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
            ORDER BY a.appt_date ASC, a.slot_time ASC""", (patient_id, day)).fetchall()
-    # Past consultation history
+    # Past consultation & medical record history
     history = patient_history(conn, patient_id)
+    bills = list_bills(conn, patient_id)
+    tests = list_test_results(conn, patient_id)
     return {
         "patient": patient,
         "today_appts": today_appts,
         "upcoming_appts": upcoming_appts,
-        "history": history
+        "history": history,
+        "bills": bills,
+        "tests": tests
     }
 
 
@@ -183,8 +188,8 @@ def list_patients(conn, q=""):
            "FROM patients p ")
     args = ()
     if q:
-        sql += "WHERE p.full_name LIKE ? OR p.phone LIKE ? "
-        args = (f"%{q}%", f"%{q}%")
+        sql += "WHERE p.full_name LIKE ? OR p.phone LIKE ? OR p.blood_group LIKE ? "
+        args = (f"%{q}%", f"%{q}%", f"%{q}%")
     return conn.execute(sql + "ORDER BY p.full_name", args).fetchall()
 
 
@@ -200,13 +205,61 @@ def patient_history(conn, patient_id):
     return conn.execute(
         """SELECT a.appointment_id, a.appt_date, a.slot_time, a.status, a.reason,
                   d.full_name AS doctor_name, dep.name AS department,
-                  c.diagnosis, c.prescription, c.notes
+                  c.diagnosis, c.prescription, c.treatment, c.notes
            FROM appointments a
            JOIN doctors d      ON d.doctor_id = a.doctor_id
            JOIN departments dep ON dep.dept_id = d.dept_id
            LEFT JOIN consultations c ON c.appointment_id = a.appointment_id
            WHERE a.patient_id = ?
            ORDER BY a.appt_date DESC, a.slot_time DESC""", (patient_id,)).fetchall()
+
+
+# ------------------------------------------------------------------ Rooms, Staff, Billing, Tests (HMS_aiml_22)
+def list_rooms(conn):
+    return conn.execute(
+        """SELECT r.*, dep.name AS department_name
+           FROM rooms r
+           LEFT JOIN departments dep ON dep.dept_id = r.dept_id
+           ORDER BY r.floor ASC, r.room_no ASC"""
+    ).fetchall()
+
+
+def list_staff(conn):
+    return conn.execute(
+        """SELECT s.*, r.room_no, r.room_type, r.floor
+           FROM staff s
+           LEFT JOIN rooms r ON r.room_id = s.room_id
+           ORDER BY s.role ASC, s.full_name ASC"""
+    ).fetchall()
+
+
+def list_bills(conn, patient_id=None):
+    sql = """SELECT b.*, p.full_name AS patient_name, p.phone AS patient_phone,
+                    (SELECT group_concat(pm.payment_mode || ': ₹' || CAST(pm.amount AS INT) || ' (' || pm.transaction_no || ')', ' · ')
+                     FROM payments pm WHERE pm.bill_id = b.bill_id) AS payment_details
+             FROM bills b
+             JOIN patients p ON p.patient_id = b.patient_id """
+    args = []
+    if patient_id:
+        sql += "WHERE b.patient_id = ? "
+        args.append(patient_id)
+    return conn.execute(sql + "ORDER BY b.bill_date DESC, b.bill_id DESC", args).fetchall()
+
+
+def list_tests(conn):
+    return conn.execute("SELECT * FROM tests ORDER BY test_type, test_name").fetchall()
+
+
+def list_test_results(conn, patient_id=None):
+    sql = """SELECT tr.*, t.test_name, t.test_type, t.cost, p.full_name AS patient_name, p.phone AS patient_phone
+             FROM test_results tr
+             JOIN tests t ON t.test_id = tr.test_id
+             JOIN patients p ON p.patient_id = tr.patient_id """
+    args = []
+    if patient_id:
+        sql += "WHERE tr.patient_id = ? "
+        args.append(patient_id)
+    return conn.execute(sql + "ORDER BY tr.result_date DESC, tr.result_id DESC", args).fetchall()
 
 
 # ------------------------------------------------------------------ doctors

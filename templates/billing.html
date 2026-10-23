@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Hospital Billing & Payments{% endblock %}
+{% block heading %}Billing & Inpatient Accounts{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h2>Patient Invoices & Payment Ledger ({{ rows|length }})</h2>
+    <span class="muted">Tracks invoice generation, settlements, and payment transactions</span>
+  </div>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Bill ID</th>
+          <th>Bill Date</th>
+          <th>Patient</th>
+          <th>Phone</th>
+          <th>Total Amount</th>
+          <th>Amount Paid</th>
+          <th>Balance Due</th>
+          <th>Payment Status</th>
+          <th>Payment Transaction Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in rows %}
+          <tr>
+            <td><b class="token">#INV-{{ "%03d"|format(b.bill_id) }}</b></td>
+            <td>{{ b.bill_date }}</td>
+            <td><b>{{ b.patient_name }}</b></td>
+            <td>{{ b.patient_phone }}</td>
+            <td><b>₹{{ "%.2f"|format(b.total_amount) }}</b></td>
+            <td class="ok-text">₹{{ "%.2f"|format(b.amount_paid) }}</td>
+            <td>
+              {% set bal = b.total_amount - b.amount_paid %}
+              {% if bal > 0 %}
+                <span class="danger font-semibold">₹{{ "%.2f"|format(bal) }}</span>
+              {% else %}
+                <span class="muted">₹0.00</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if b.payment_status == 'Paid' %}
+                <span class="badge s-completed">Paid</span>
+              {% elif b.payment_status == 'Partial' %}
+                <span class="badge s-waiting">Partial</span>
+              {% else %}
+                <span class="badge s-cancelled">Pending</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if b.payment_details %}
+                <small class="muted font-mono">{{ b.payment_details }}</small>
+              {% else %}
+                <small class="muted">No payments recorded</small>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No billing records found.</p>
+  {% endif %}
+</div>
+{% endblock %}

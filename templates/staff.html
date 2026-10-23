@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Hospital Staff Directory{% endblock %}
+{% block heading %}Hospital Staff Directory{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h2>Medical & Administrative Staff ({{ rows|length }})</h2>
+    <span class="muted">Nurses, Receptionists, and Ward Personnel</span>
+  </div>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Role / Designation</th>
+          <th>Assigned Ward / Room</th>
+          <th>Phone</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in rows %}
+          <tr>
+            <td><b>{{ s.full_name }}</b></td>
+            <td><span class="badge {{ 's-called' if s.role == 'Nurse' else ('s-rescheduled' if s.role == 'Receptionist' else '') }}">{{ s.role }}</span></td>
+            <td>
+              {% if s.room_no %}
+                <b>Room {{ s.room_no }}</b> ({{ s.room_type }}, Floor {{ s.floor }})
+              {% else %}
+                <span class="muted">General Desk</span>
+              {% endif %}
+            </td>
+            <td>{{ s.phone or '–' }}</td>
+            <td>{{ s.email or '–' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No staff members registered.</p>
+  {% endif %}
+</div>
+{% endblock %}

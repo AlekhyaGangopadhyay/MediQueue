@@ -29,25 +29,9 @@ def create_app(config=None):
     os.makedirs(os.path.dirname(app.config["DATABASE"]) or ".", exist_ok=True)
     app.teardown_appcontext(db.close_db)
 
-    # Create tables on first run & ensure test_bookings table exists in existing databases
+    # Ensure database schema, tables, columns, views, and seed data exist
     boot = db.connect(app.config["DATABASE"])
-    if not boot.execute("SELECT 1 FROM sqlite_master WHERE name = 'patients'").fetchone():
-        db.init_db(boot)
-    else:
-        boot.execute("""
-            CREATE TABLE IF NOT EXISTS test_bookings (
-                booking_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-                test_id       INTEGER NOT NULL REFERENCES tests(test_id) ON DELETE RESTRICT,
-                patient_id    INTEGER NOT NULL REFERENCES patients(patient_id) ON DELETE RESTRICT,
-                booking_date  TEXT NOT NULL,
-                slot_time     TEXT NOT NULL,
-                status        TEXT NOT NULL DEFAULT 'BOOKED' CHECK (status IN ('BOOKED','COMPLETED','CANCELLED')),
-                notes         TEXT,
-                created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-            );
-        """)
-        boot.execute("CREATE INDEX IF NOT EXISTS idx_test_bookings_patient ON test_bookings(patient_id, booking_date);")
-        boot.execute("CREATE INDEX IF NOT EXISTS idx_test_bookings_status ON test_bookings(status);")
+    db.ensure_schema(boot, auto_seed=not app.config.get("TESTING"))
     boot.close()
 
     # ---------------------------------------------------------- Auth & Sessions
@@ -81,9 +65,10 @@ def create_app(config=None):
         req = require_login()
         if req:
             return req
-        if not is_patient():
+        if not is_patient() or not current_user().get("patient_id"):
+            session.pop("user", None)
             flash("Please sign in with a patient account.", "error")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("login"))
         return None
 
     # ---------------------------------------------------------- CSRF & Globals
@@ -207,7 +192,17 @@ def create_app(config=None):
         req = require_patient()
         if req:
             return req
-        data = svc.patient_portal_data(db.get_db(), current_user()["patient_id"])
+        pid = current_user().get("patient_id")
+        try:
+            data = svc.patient_portal_data(db.get_db(), pid)
+        except AppError:
+            session.pop("user", None)
+            flash("Your patient profile was not found in the active database. Please sign in or register.", "error")
+            return redirect(url_for("login"))
+        except Exception as exc:
+            app.logger.exception("Error loading portal: %s", exc)
+            flash("Unable to load patient records. Please try again.", "error")
+            return redirect(url_for("lab_tests"))
         return render_template("patient_portal.html", data=data, page="portal")
 
     # ---------------------------------------------------------- Dashboard (Admin)
@@ -555,6 +550,11 @@ def create_app(config=None):
         except (ValueError, AppError) as exc:
             return jsonify(error=str(exc) if isinstance(exc, AppError) else "Invalid doctor."), 400
         return jsonify(slots=slots)
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.exception("Internal Server Error: %s", error)
+        return render_template("500.html", error=error), 500
 
     return app
 

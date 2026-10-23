@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}System Notice · MediQueue{% endblock %}
+{% block heading %}System Notice{% endblock %}
+{% block content %}
+<div class="card center" style="padding: 40px 20px;">
+  <h2>Session or System Refresh Required</h2>
+  <p class="muted" style="max-width: 480px; margin: 8px auto 20px;">
+    Your session may have expired following a server deployment or database synchronization. Please return to the login page or catalog.
+  </p>
+  <div class="actions" style="justify-content: center; gap: 12px;">
+    <a href="{{ url_for('login') }}" class="btn primary">Sign In Again</a>
+    <a href="{{ url_for('lab_tests') }}" class="btn">View Test Catalog</a>
+  </div>
+</div>
+{% endblock %}
+{% block auth_content %}
+<div class="card center" style="padding: 40px 20px;">
+  <h2>System Notice</h2>
+  <p class="muted" style="margin: 8px 0 20px;">Please sign in to access MediQueue hospital services.</p>
+  <div>
+    <a href="{{ url_for('login') }}" class="btn primary">Return to Sign In</a>
+  </div>
+</div>
+{% endblock %}

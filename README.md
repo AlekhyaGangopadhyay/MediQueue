@@ -65,42 +65,225 @@ The project is hosted and running publicly on Render:
 
 ## 🗄️ Relational Database Architecture
 
+### 1. Entity-Relationship (ER) Diagram
+
 ```mermaid
 erDiagram
     DEPARTMENTS ||--o{ DOCTORS : employs
     DEPARTMENTS ||--o{ ROOMS : allocates
-    ROOMS ||--o{ STAFF : assigned_to
-    DOCTORS ||--o{ DOCTOR_SCHEDULES : works
+    ROOMS ||--o{ STAFF : houses
+    DOCTORS ||--o{ DOCTOR_SCHEDULES : has
     DOCTORS ||--o{ APPOINTMENTS : attends
     PATIENTS ||--o{ APPOINTMENTS : books
-    PATIENTS ||--o{ BILLS : billed_to
+    PATIENTS ||--o{ BILLS : receives
     BILLS ||--o{ PAYMENTS : settles
     PATIENTS ||--o{ TEST_BOOKINGS : schedules
-    TESTS ||--o{ TEST_BOOKINGS : contains
+    TESTS ||--o{ TEST_BOOKINGS : lists
     PATIENTS ||--o{ TEST_RESULTS : undergoes
     TESTS ||--o{ TEST_RESULTS : categorizes
-    APPOINTMENTS ||--o| QUEUE_TOKENS : "issues token"
-    APPOINTMENTS ||--o| CONSULTATIONS : "results in"
-    APPOINTMENTS ||--o{ APPOINTMENT_HISTORY : "audits"
-    
-    DEPARTMENTS { int dept_id PK  string name UK  string location  string phone }
-    DOCTORS { int doctor_id PK  string full_name  int dept_id FK  string specialization  string phone UK  int consult_minutes }
-    DOCTOR_SCHEDULES { int schedule_id PK  int doctor_id FK  int weekday  string start_time  string end_time }
-    PATIENTS { int patient_id PK  string full_name  string date_of_birth  string gender  string phone UK  string blood_group }
-    ROOMS { int room_id PK  string room_no UK  string room_type  int floor  string status  real daily_charge }
-    STAFF { int staff_id PK  string full_name  string role  string phone  int room_id FK }
-    APPOINTMENTS { int appointment_id PK  int patient_id FK  int doctor_id FK  string appt_date  string slot_time  string status }
-    QUEUE_TOKENS { int token_id PK  int appointment_id FK_UK  int doctor_id FK  int token_no  string status }
-    CONSULTATIONS { int consultation_id PK  int appointment_id FK_UK  string diagnosis  string prescription  string treatment }
-    TESTS { int test_id PK  string test_name  string test_type  real cost }
-    TEST_BOOKINGS { int booking_id PK  int test_id FK  int patient_id FK  string booking_date  string slot_time  string status }
-    TEST_RESULTS { int result_id PK  int test_id FK  int patient_id FK  string result_value  string unit  string normal_range }
-    BILLS { int bill_id PK  int patient_id FK  string bill_date  real total_amount  real amount_paid  string payment_status }
-    PAYMENTS { int payment_id PK  int bill_id FK  real amount  string payment_mode  string transaction_no }
-    APPOINTMENT_HISTORY { int history_id PK  int appointment_id FK  string action  string old_status  string new_status }
+    APPOINTMENTS ||--o| QUEUE_TOKENS : generates
+    APPOINTMENTS ||--o| CONSULTATIONS : produces
+    APPOINTMENTS ||--o{ APPOINTMENT_HISTORY : audits
+
+    DEPARTMENTS {
+        int dept_id PK
+        string name UK
+        string location
+        string phone
+    }
+
+    DOCTORS {
+        int doctor_id PK
+        int dept_id FK
+        string full_name
+        string specialization
+        string phone UK
+        string email UK
+        int consult_minutes
+        int is_active
+    }
+
+    DOCTOR_SCHEDULES {
+        int schedule_id PK
+        int doctor_id FK
+        int weekday
+        string start_time
+        string end_time
+    }
+
+    PATIENTS {
+        int patient_id PK
+        string full_name
+        string date_of_birth
+        string gender
+        string phone UK
+        string email UK
+        string address
+        string blood_group
+        string password_hash
+    }
+
+    ROOMS {
+        int room_id PK
+        int dept_id FK
+        string room_no UK
+        string room_type
+        int floor
+        string status
+        float daily_charge
+    }
+
+    STAFF {
+        int staff_id PK
+        int room_id FK
+        string full_name
+        string role
+        string phone
+        string email
+    }
+
+    APPOINTMENTS {
+        int appointment_id PK
+        int patient_id FK
+        int doctor_id FK
+        string appt_date
+        string slot_time
+        string status
+        string reason
+    }
+
+    QUEUE_TOKENS {
+        int token_id PK
+        int appointment_id FK
+        int doctor_id FK
+        string queue_date
+        int token_no
+        string status
+    }
+
+    CONSULTATIONS {
+        int consultation_id PK
+        int appointment_id FK
+        string started_at
+        string ended_at
+        string diagnosis
+        string prescription
+        string treatment
+    }
+
+    TESTS {
+        int test_id PK
+        string test_name
+        string test_type
+        float cost
+    }
+
+    TEST_BOOKINGS {
+        int booking_id PK
+        int test_id FK
+        int patient_id FK
+        string booking_date
+        string slot_time
+        string status
+        string notes
+    }
+
+    TEST_RESULTS {
+        int result_id PK
+        int test_id FK
+        int patient_id FK
+        string result_value
+        string unit
+        string normal_range
+        string result_date
+    }
+
+    BILLS {
+        int bill_id PK
+        int patient_id FK
+        string bill_date
+        float total_amount
+        float amount_paid
+        string payment_status
+    }
+
+    PAYMENTS {
+        int payment_id PK
+        int bill_id FK
+        string payment_date
+        float amount
+        string payment_mode
+        string transaction_no
+    }
+
+    APPOINTMENT_HISTORY {
+        int history_id PK
+        int appointment_id FK
+        string action
+        string old_status
+        string new_status
+        string changed_at
+    }
 ```
 
 ---
+
+### 2. Relational Schema & Integrity Constraints
+
+| Table Name | Primary Key | Foreign Keys & References | Key Constraints & Integrity Rules |
+| :--- | :--- | :--- | :--- |
+| **`departments`** | `dept_id` | *None* | `name` UNIQUE NOT NULL |
+| **`doctors`** | `doctor_id` | `dept_id` → `departments(dept_id)` | `phone` UNIQUE, `email` UNIQUE, CHECK (`consult_minutes` BETWEEN 5 AND 120) |
+| **`doctor_schedules`**| `schedule_id` | `doctor_id` → `doctors(doctor_id)` | UNIQUE (`doctor_id`, `weekday`), CHECK (`start_time < end_time`) |
+| **`admins`** | `admin_id` | *None* | `username` UNIQUE NOT NULL, Salted password hash |
+| **`patients`** | `patient_id` | *None* | `phone` UNIQUE NOT NULL, `email` UNIQUE, CHECK (`gender` in M/F/O) |
+| **`rooms`** | `room_id` | `dept_id` → `departments(dept_id)` | `room_no` UNIQUE NOT NULL, `daily_charge` >= 0 |
+| **`staff`** | `staff_id` | `room_id` → `rooms(room_id)` | `full_name` NOT NULL, `role` NOT NULL |
+| **`appointments`** | `appointment_id`| `patient_id` → `patients`, `doctor_id` → `doctors` | CHECK (`status` IN 'BOOKED', 'CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED', 'NO_SHOW') |
+| **`queue_tokens`** | `token_id` | `appointment_id` → `appointments`, `doctor_id` → `doctors` | UNIQUE (`doctor_id`, `queue_date`, `token_no`), `appointment_id` UNIQUE |
+| **`consultations`**| `consultation_id`| `appointment_id` → `appointments(appointment_id)` | `appointment_id` UNIQUE (Strict 1:1 consultation per appointment) |
+| **`tests`** | `test_id` | *None* | `test_name` NOT NULL, `cost` >= 0 |
+| **`test_bookings`** | `booking_id` | `test_id` → `tests`, `patient_id` → `patients` | CHECK (`status` IN 'BOOKED', 'COMPLETED', 'CANCELLED') |
+| **`test_results`** | `result_id` | `test_id` → `tests`, `patient_id` → `patients` | `result_date` NOT NULL |
+| **`bills`** | `bill_id` | `patient_id` → `patients(patient_id)` | `total_amount` >= 0, `amount_paid` >= 0 |
+| **`payments`** | `payment_id` | `bill_id` → `bills(bill_id)` (ON DELETE CASCADE) | `amount` > 0, `payment_mode` NOT NULL |
+| **`appointment_history`**| `history_id` | `appointment_id` → `appointments` | Immutable append-only audit trail enforced by database triggers |
+
+---
+
+### 3. Database Engine Guarantees & Business Rules
+
+1. **Double-Booking Prevention via Partial Unique Indexes**:
+   ```sql
+   CREATE UNIQUE INDEX uq_doctor_slot_live
+       ON appointments (doctor_id, appt_date, slot_time)
+       WHERE status NOT IN ('CANCELLED', 'NO_SHOW');
+
+   CREATE UNIQUE INDEX uq_patient_slot_live
+       ON appointments (patient_id, appt_date, slot_time)
+       WHERE status NOT IN ('CANCELLED', 'NO_SHOW');
+   ```
+   * *Mechanism*: Prevents a doctor or a patient from having two overlapping active appointments. When an appointment is cancelled or marked no-show, the slot is immediately and safely freed for re-booking.
+
+2. **Single Active Consultation Rule**:
+   ```sql
+   CREATE UNIQUE INDEX uq_one_called_per_doctor
+       ON queue_tokens (doctor_id, queue_date)
+       WHERE status = 'CALLED';
+   ```
+   * *Mechanism*: Guarantees a doctor cannot have more than one patient called into consultation (`CALLED`) simultaneously.
+
+3. **Append-Only Audit Trail (Triggers)**:
+   * `trg_appt_created`: Automatically records initial `BOOKED` action when an appointment is inserted.
+   * `trg_appt_changed`: Automatically logs state transitions (`RESCHEDULED`, `CHECKED_IN`, `COMPLETED`, `CANCELLED`) with timestamp, old status, and new status.
+   * `trg_history_no_update` & `trg_history_no_delete`: Run `RAISE(ABORT, 'appointment_history is append-only')` to prevent any modification or deletion of audit logs.
+
+4. **Dynamic Queue Wait Calculation (`v_queue` View)**:
+   * Computes the number of patients waiting ahead (`people_ahead`) and multiplies it by the doctor's consultation duration:
+   $$\text{est\_wait\_min} = \text{people\_ahead} \times \text{doctor.consult\_minutes}$$
+
+5. **ACID Concurrency via `BEGIN IMMEDIATE`**:
+   * All multi-step mutations run through `db.transaction()` opening transactions with `BEGIN IMMEDIATE` to acquire write locks upfront, eliminating race conditions when multiple users book the same slot at the exact same millisecond.
 
 ## 🛠️ Technology Stack
 

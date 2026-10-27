@@ -16,7 +16,7 @@ The platform is integrated with the complete **`HMS_aiml_22`** healthcare datase
 
 The project is hosted and running publicly on Render:
 
-🔗 **Production URL:** [https://mediqueue-iazh.onrender.com](https://mediqueue-iazh.onrender.com)  
+🔗 **Production URL:** [https://mediqueue-iazh.onrender.com](https://mediqueue-iazh.onrender.com/)  
 📂 **GitHub Repository:** [https://github.com/AlekhyaGangopadhyay/MediQueue](https://github.com/AlekhyaGangopadhyay/MediQueue)
 
 ### Demo Credentials
